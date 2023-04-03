@@ -26,4 +26,6 @@ def get_train_df():
 
     df = pd.read_csv(DATA_PATH / "driver_imgs_list.csv")
     df = df.assign(path=df.img.map(name_to_path), desc=df.classname.map(classes))
+
+    df["img"] = [lambda row=row: Image.open(row.path) for row in df.itertuples()]
     return df
