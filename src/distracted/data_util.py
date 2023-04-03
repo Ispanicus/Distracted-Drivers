@@ -24,7 +24,6 @@ def get_train_df():
     name_to_path = {f.name: f for f in DATA_PATH.rglob("*.jpg")}
     # test_files = [f for f in (DATA_PATH / 'imgs/test').rglob('*.jpg')]
 
-    df = pd.read_csv(DATA_PATH / "driver_imgs_list.csv").assign(
-        path=df.img.map(name_to_path), desc=df.classname.map(classes)
-    )
+    df = pd.read_csv(DATA_PATH / "driver_imgs_list.csv")
+    df = df.assign(path=df.img.map(name_to_path), desc=df.classname.map(classes))
     return df
