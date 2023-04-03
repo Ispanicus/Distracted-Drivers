@@ -1,3 +1,4 @@
 /data
 **/*egg*
 **/__pycache__
+/venv
