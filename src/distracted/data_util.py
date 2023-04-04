@@ -8,6 +8,10 @@ DATA_PATH = Path(distracted.__path__[0]).parents[1] / "data"
 assert DATA_PATH.exists()
 
 
+def get_efficientnet_embeddings() -> pd.DataFrame:
+    return pd.read_parquet(DATA_PATH / "efficientnet_embeddings.parquet")
+
+
 def get_train_df():
     classes = {
         "c0": "safe driving",
