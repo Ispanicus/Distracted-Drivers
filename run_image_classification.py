@@ -63,7 +63,7 @@ require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/imag
 
 MODEL_CONFIG_CLASSES = list(MODEL_FOR_IMAGE_CLASSIFICATION_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:256"
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:28"
 
 def pil_loader(path: str):
     with open(path, "rb") as f:
