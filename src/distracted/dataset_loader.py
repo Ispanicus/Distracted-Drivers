@@ -1,9 +1,10 @@
 import distracted
 from datasets import load_dataset, Features, Image, ClassLabel
 from pathlib import Path
+import pickle
 
 
-def dataset_loader():
+def dataset_creator():
     features = Features(
         {
             "label": ClassLabel(
@@ -18,5 +19,11 @@ def dataset_loader():
     assert DATA_PATH.exists()
 
     dataset = load_dataset("imagefolder", data_dir= DATA_PATH, drop_labels=False)
-
+    return dataset
+    
+def dataset_loader():
+    HOME_PATH = Path(distracted.__path__[0]).parents[1] / "dataset.obj"
+    file = open(HOME_PATH,'rb')
+    dataset = pickle.load(file)
+    file.close()
     return dataset
