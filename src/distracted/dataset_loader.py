@@ -25,7 +25,7 @@ def dataset_loader():
     
     dataset = load_dataset("imagefolder", data_dir= DATA_PATH, drop_labels=False)
     
-    with open(HOME_PATH,"wb") as file:
+    with open(OBJ_PATH,"wb") as file:
         pickle.dump(dataset, file)
     
     return dataset
