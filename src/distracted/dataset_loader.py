@@ -35,7 +35,7 @@ def create_metadata():
         ],
         columns=meta.columns,
     )
-    pd.concat([meta, test_meta]).to_csv(DATA_PATH / "imgs/metadata.csv")
+    pd.concat([meta, test_meta]).to_csv(DATA_PATH / "imgs/metadata.csv", index=False)
 
 
 if __name__ == "__main__":
