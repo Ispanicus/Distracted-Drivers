@@ -3,10 +3,13 @@ from datasets import load_dataset, Features, Image, ClassLabel
 from pathlib import Path
 import pickle
 
-HOME_PATH = Path(distracted.__path__[0]).parents[1] / "dataset.obj"
-assert HOME_PATH.exists()
+def dataset_loader():
+    OBJ_PATH = Path(distracted.__path__[0]).parents[1] / "dataset.obj"
+    if OBJ_PATH.exists():
+        with open(OBJ_PATH,'rb') as file:
+            dataset = pickle.load(file)
+            return dataset
 
-def dataset_creator():
     features = Features(
         {
             "label": ClassLabel(
@@ -19,17 +22,10 @@ def dataset_creator():
 
     DATA_PATH = Path(distracted.__path__[0]).parents[1] / "data/imgs"
     assert DATA_PATH.exists()
-
+    
     dataset = load_dataset("imagefolder", data_dir= DATA_PATH, drop_labels=False)
     
-    filehandler = open(HOME_PATH,"wb")
-    pickle.dump(dataset, filehandler)
-    filehandler.close()
-    return dataset
-
-def dataset_loader():
-
-    file = open(HOME_PATH,'rb')
-    dataset = pickle.load(file)
-    file.close()
+    with open(HOME_PATH,"wb") as file:
+        pickle.dump(dataset, file)
+    
     return dataset
