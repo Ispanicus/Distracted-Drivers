@@ -27,3 +27,4 @@ for sample in dataset["train"]:
 
 df = pd.DataFrame(np.vstack(img_embeddings), columns=map(str, range(2560)))
 df.to_parquet(DATA_PATH / "efficientnet_embeddings.parquet")
+dataset["train"][10000]["image"]

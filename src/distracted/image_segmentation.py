@@ -2,6 +2,8 @@ from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
 from distracted.data_util import get_train_df
 import pandas as pd
 
+print(1)
+
 
 processor = AutoImageProcessor.from_pretrained(
     "facebook/mask2former-swin-base-coco-panoptic"
@@ -82,8 +84,8 @@ infos = [pred[0]["segments_info"] for pred in results]
 flattened = [[i, obj] for i, objs in enumerate(infos) for obj in objs]
 df = pd.DataFrame(flattened)
 df = pd.concat([df, pd.json_normalize(df[1])], axis=1)
-df = df.assign(df[0].map(lambda x: "phone" if x < 100 else "good"))
-df
+df = df.assign(state=df[0].map(lambda x: "phone" if x < 100 else "good"))
+df.groupby("state").label.value_counts()
 pd.json_normalize(flattened)
 
 
