@@ -17,6 +17,7 @@ model = EfficientNetForImageClassification(config).to("cuda")
 preprocessor = EfficientNetImageProcessor.from_pretrained("google/efficientnet-b7")
 dataset = dataset_loader()
 
+index = []
 img_embeddings = []
 for sample in dataset["train"]:
     img = sample["image"]
@@ -24,7 +25,7 @@ for sample in dataset["train"]:
     with torch.no_grad():
         logits = model(**{k: v.to("cuda") for k, v in inputs.items()}).logits
     img_embeddings.append(logits.cpu().numpy())
+    index.append(sample["img"])
 
-df = pd.DataFrame(np.vstack(img_embeddings), columns=map(str, range(2560)))
+df = pd.DataFrame(np.vstack(img_embeddings), columns=map(str, range(2560)), index=index)
 df.to_parquet(DATA_PATH / "efficientnet_embeddings.parquet")
-dataset["train"][10000]["image"]
