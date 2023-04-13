@@ -1,11 +1,5 @@
 # Distracted-Drivers
 
-# Setup
-Download the "distracted driver" dataset
-https://www.kaggle.com/competitions/state-farm-distracted-driver-detection/data
-
-Unzip and rename to distracted-drivers/data/
-
 # Goal
 Fine-tune and apply feature engineering to Efficientnet for a classification task
 
@@ -16,3 +10,24 @@ L-2:
 
 New L-2
   (classifier): Linear(in_features=2560 + len(feature_engineering), out_features=1000, bias=True)
+
+# Requirements
+CUDA & Pytorch
+
+# Setup
+```
+git clone https://github.com/Ispanicus/Distracted-Drivers
+pip install -e Distracted-Drivers
+```
+
+Download the "distracted driver" dataset
+https://www.kaggle.com/competitions/state-farm-distracted-driver-detection/data
+
+Unzip and rename to Distracted-Drivers/data/
+
+```
+echo Caching panoptic masks
+python -m image_segmentation.py
+```
+
+
