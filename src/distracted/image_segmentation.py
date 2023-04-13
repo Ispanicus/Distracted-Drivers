@@ -29,11 +29,14 @@ def main():
 
     onehot_path = DATA_PATH / "onehot"
     onehot_path.mkdir(exist_ok=True)
-    for row in tqdm(df.itertuples(), total=len(df)):
-        path = (onehot_path / row.path.name).with_suffix(".jpg.npz")
+    train_paths = [row.path for row in df.itertuples()]
+    test_paths = [row for row in (DATA_PATH / "imgs/test").glob("*.jpg")]
+    assert test_paths
+    for jpg_path in tqdm(train_paths + test_paths):
+        path = (onehot_path / jpg_path.name).with_suffix(".jpg.npz")
         if path.exists():
             continue
-        img = row.img()
+        img = Image.open(jpg_path)
         onehot = segmentation_pipeline(img, model, processor)
 
         save_onehot(path, onehot)
