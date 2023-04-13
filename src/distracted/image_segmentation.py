@@ -29,14 +29,14 @@ def main():
 
     onehot_path = DATA_PATH / "onehot"
     onehot_path.mkdir(exist_ok=True)
-    for row, _ in zip(tqdm(df.itertuples(), total=len(df)), range(100)):
+    for row in tqdm(df.itertuples(), total=len(df)):
         path = (onehot_path / row.path.name).with_suffix(".jpg.npz")
-        # if path.exists():
-        #     continue
+        if path.exists():
+            continue
         img = row.img()
         onehot = segmentation_pipeline(img, model, processor)
 
-        # save_onehot(path, onehot)
+        save_onehot(path, onehot)
 
 
 def save_onehot(path: Path, onehot: Tensor[H, W, C]):
