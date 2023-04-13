@@ -1,11 +1,29 @@
 import distracted
+import torch
 import pandas as pd
 from PIL import Image
 from pathlib import Path
-from enum import Enum
 
 DATA_PATH = Path(distracted.__path__[0]).parents[1] / "data"
 assert DATA_PATH.exists()
+
+
+H, W = 640, 480
+
+MASK_LABELS = [
+    "person",
+    "bottle",
+    "cell phone",
+    "cup",
+    "car",  # Idk if useful but lets grab it
+    "chair",  # Idk if useful but lets grab it
+]
+C = len(MASK_LABELS)
+
+
+class Tensor(torch.Tensor):
+    def __class_getitem__(*args):
+        ...  # allow Tensor[W, H, C]
 
 
 def get_efficientnet_embeddings() -> pd.DataFrame:
