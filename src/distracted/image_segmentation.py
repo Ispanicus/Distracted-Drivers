@@ -1,10 +1,10 @@
 from pathlib import Path
-from tqdm import tqdm
 
 import holoviews as hv
 import numpy as np
 import torch
 from PIL import Image
+from tqdm import tqdm
 from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
 
 from distracted.data_util import DATA_PATH, MASK_LABELS, C, H, Tensor, W, get_train_df
@@ -29,21 +29,22 @@ def main():
 
     onehot_path = DATA_PATH / "onehot"
     onehot_path.mkdir(exist_ok=True)
-    for row in tqdm(df.itertuples(), total=len(df)):
+    for row, _ in zip(tqdm(df.itertuples(), total=len(df)), range(100)):
         path = (onehot_path / row.path.name).with_suffix(".jpg.npz")
-        if path.exists():
-            continue
+        # if path.exists():
+        #     continue
         img = row.img()
         onehot = segmentation_pipeline(img, model, processor)
-        save_onehot(path, onehot)
+
+        # save_onehot(path, onehot)
 
 
-def save_onehot(path: Path, onehot: Tensor[W, H, C]):
+def save_onehot(path: Path, onehot: Tensor[H, W, C]):
     np.savez_compressed(path, data=onehot.to(bool).numpy())
 
 
-def load_onehot() -> Tensor[W, H, C]:
-    return torch.from_numpy(np.load("test.npz")["data"]).to(torch.float32)
+def load_onehot(path: Path) -> Tensor[H, W, C]:
+    return torch.from_numpy(np.load(path)["data"]).to(torch.float32)
 
 
 def segmentation_pipeline(img: Image.Image, model, processor):
@@ -64,10 +65,11 @@ def segmentation_pipeline(img: Image.Image, model, processor):
 
 def extract_onehot(prediction, model_id2label):
     # segment_arr[x, y] == 42 if this pixel belongs to class 42, e.g. "motercycle"
-    segment_arr: Tensor[W, H] = prediction["segmentation"]
+    segment_arr: Tensor[H, W] = prediction["segmentation"]
+    assert segment_arr.shape == (H, W)
 
     # Now we want to normalise the data to only contain classes of interest
-    one_hot: Tensor[W, H, C] = torch.zeros(size=segment_arr.shape + (C,))
+    one_hot: Tensor[H, W, C] = torch.zeros(size=segment_arr.shape + (C,))
 
     for segment in prediction["segments_info"]:
         try:
@@ -83,10 +85,10 @@ def extract_onehot(prediction, model_id2label):
     return one_hot
 
 
-def draw_semantic_segmentation(one_hot: Tensor[W, H, C]):
-    unhot_encode: Tensor[W, H, C] = torch.ones_like(one_hot).cumsum(axis=-1)
+def draw_semantic_segmentation(one_hot: Tensor[H, W, C]):
+    unhot_encode: Tensor[H, W, C] = torch.ones_like(one_hot).cumsum(axis=-1)
     # The following .sum is arbitrary, could also be .max, since each layer is non-overlapping
-    class_arr: Tensor[W, H] = (one_hot * unhot_encode).sum(axis=-1)
+    class_arr: Tensor[H, W] = (one_hot * unhot_encode).sum(axis=-1)
     num2label = dict(enumerate(["None"] + MASK_LABELS))
 
     img = hv.Image(class_arr.numpy())

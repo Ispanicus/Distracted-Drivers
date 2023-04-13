@@ -1,8 +1,10 @@
-import distracted
-import torch
-import pandas as pd
-from PIL import Image
 from pathlib import Path
+
+import pandas as pd
+import torch
+from PIL import Image
+
+import distracted
 
 DATA_PATH = Path(distracted.__path__[0]).parents[1] / "data"
 assert DATA_PATH.exists()
@@ -23,7 +25,7 @@ C = len(MASK_LABELS)
 
 class Tensor(torch.Tensor):
     def __class_getitem__(*args):
-        ...  # allow Tensor[W, H, C]
+        ...  # allow Tensor[H, W, C]
 
 
 def get_efficientnet_embeddings() -> pd.DataFrame:
