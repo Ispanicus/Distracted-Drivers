@@ -1,99 +1,88 @@
 from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
-from distracted.data_util import get_train_df
+import torch
+from distracted.data_util import get_train_df, Tensor, W, H, MASK_LABELS, C
 import pandas as pd
-
-print(1)
-
-
-processor = AutoImageProcessor.from_pretrained(
-    "facebook/mask2former-swin-base-coco-panoptic"
-)
-model = Mask2FormerForUniversalSegmentation.from_pretrained(
-    "facebook/mask2former-swin-base-coco-panoptic"
-)
+from PIL import Image
 
 
-def segmentation_pipeline(img):
-    preprocessed_image = processor(image, return_tensors="pt")
-    outputs = model(**preprocessed_image)
+def main():
+    df = get_train_df()
+    phone = df[df.desc.str.contains("phone|texting")]
+    good = df[df.desc.str.contains("safe")]
+    imgs = [img() for img in pd.concat([phone.img.iloc[:100], good.img.iloc[:100]])]
 
-    prediction = processor.post_process_panoptic_segmentation(
-        outputs, target_sizes=[image.size[::-1]]
-    )[0]
-    return prediction
+    processor = AutoImageProcessor.from_pretrained(
+        "facebook/mask2former-swin-base-coco-panoptic"
+    )
+    model = Mask2FormerForUniversalSegmentation.from_pretrained(
+        "facebook/mask2former-swin-base-coco-panoptic"
+    ).to("cuda")
 
-
-from collections import defaultdict
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from matplotlib import cm
-
-
-def draw_panoptic_segmentation(segmentation, segments_info):
-    if segmentation.min() == 1:
-        segment_label = segmentation - 1
-
-    class_ids = list({s["label_id"] for s in segments_info})
-
-    color_map = cm.get_cmap("viridis", len(segments_info))
-
-    fig, ax = plt.subplots()
-    ax.imshow(segmentation)
-
-    instances_counter = defaultdict(int)
-    handles = []
-    # for each segment, draw its legend
-    for s in segments_info:
-        segment_label = model.config.id2label[s["label_id"]]
-        label = f"{segment_label}-{instances_counter[s['label_id']]}"
-        instances_counter[s["label_id"]] += 1
-        color = color_map(s["id"] - 1)
-        handles.append(mpatches.Patch(color=color, label=label))
-
-    ax.legend(handles=handles)
+    one_hots: list[Tensor[W, H, C]] = [
+        segmentation_pipeline(img, model, processor) for img in imgs[:5]
+    ]
+    one_hots[-1]
+    imgs[4]
 
 
-df = get_train_df()
-phone = df[df.desc.str.contains("phone|texting")]
-good = df[df.desc.str.contains("safe")]
-
-df.desc.unique()
-
-imgs = [img() for img in pd.concat([phone.img.iloc[:100], good.img.iloc[:100]])]
-model.to("cuda")
-
-results = []
-for img in imgs:
+def segmentation_pipeline(img: Image.Image, model, processor):
     preprocessed_image = processor(images=img, return_tensors="pt")
 
     outputs = model(**{k: v.to("cuda") for k, v in preprocessed_image.items()})
     for k, v in list(outputs.items()):
         outputs[k] = v.to("cpu")
 
-    predictions = processor.post_process_panoptic_segmentation(
-        outputs, target_sizes=[img.size[::-1]]
-    )
+    prediction = processor.post_process_panoptic_segmentation(
+        outputs,
+        target_sizes=[img.size[::-1]],
+        label_ids_to_fuse=set(model.config.id2label),
+    )[0]
 
-    for pred in predictions:
-        for segment in pred["segments_info"]:
-            segment["label"] = model.config.id2label[segment["label_id"]]
-    results.append(predictions)
-
-df = pd.DataFrame(results)
-infos = [pred[0]["segments_info"] for pred in results]
-flattened = [[i, obj] for i, objs in enumerate(infos) for obj in objs]
-df = pd.DataFrame(flattened)
-df = pd.concat([df, pd.json_normalize(df[1])], axis=1)
-df = df.assign(state=df[0].map(lambda x: "phone" if x < 100 else "good"))
-df.groupby("state").label.value_counts()
-pd.json_normalize(flattened)
+    return extract_onehot(prediction, model.config.id2label)
 
 
-# Visualise
-# for image_func in phone.img.iloc[[100, 200, 300, 400, 500, 600, 700]]:
-#     image = image_func()
-#     prediction = segmentation_pipeline(image)
-#     display(draw_panoptic_segmentation(**prediction))
+def extract_onehot(prediction, model_id2label):
+    # segment_arr[x, y] == 42 if this pixel belongs to class 42, e.g. "motercycle"
+    segment_arr: Tensor[W, H] = prediction["segmentation"]
 
-#     prediction["segments_info"]
-#     prediction["segmentation"]
+    # Now we want to normalise the data to only contain classes of interest
+    one_hot: Tensor[W, H, C] = torch.zeros(size=segment_arr.shape + (C,))
+
+    for segment in prediction["segments_info"]:
+        if (label := model_id2label[segment["label_id"]]) not in MASK_LABELS:
+            continue
+
+        class_layer = MASK_LABELS.index(label)
+        one_hot[segment_arr == segment["id"]][..., class_layer] = 1
+
+    return one_hot
+
+
+def draw_semantic_segmentation(one_hot: Tensor[W, H, C], labels):
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+    from matplotlib import cm
+
+    unhot_encode: Tensor[W, H, C] = torch.ones_like(one_hot).cumsum(axis=-1)
+    # The following .sum is arbitrary, could also be .max, since each layer is non-overlapping
+    class_arr: Tensor[W, H] = (one_hot * unhot_encode).sum(axis=-1)
+
+    plot_labels = ["None"] + labels
+    color_map = cm.get_cmap("viridis", len(plot_labels))
+
+    _, ax = plt.subplots()
+    ax.imshow(class_arr, cmap=color_map, vmax=len(plot_labels))
+
+    handles = [
+        mpatches.Patch(
+            color=color_map(i),
+            label=label,
+        )
+        for i, label in enumerate(plot_labels)
+    ]
+    ax.legend(handles=handles)
+    return ax  # or just show in a notebook
+
+
+if __name__ == "__main__":
+    main()
