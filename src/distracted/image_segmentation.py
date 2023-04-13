@@ -1,15 +1,24 @@
-from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
+from pathlib import Path
+from tqdm import tqdm
+
+import holoviews as hv
+import numpy as np
 import torch
-from distracted.data_util import get_train_df, Tensor, W, H, MASK_LABELS, C
-import pandas as pd
 from PIL import Image
+from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
+
+from distracted.data_util import DATA_PATH, MASK_LABELS, C, H, Tensor, W, get_train_df
+
+hv.extension("bokeh")
+
+DISPLAY_IN_NOTEBOOK = False  # Enable to display the panoptic segmentation in notebook
 
 
 def main():
     df = get_train_df()
-    phone = df[df.desc.str.contains("phone|texting")]
-    good = df[df.desc.str.contains("safe")]
-    imgs = [img() for img in pd.concat([phone.img.iloc[:100], good.img.iloc[:100]])]
+    # phone = df[df.desc.str.contains("phone|texting")]
+    # good = df[df.desc.str.contains("safe")]
+    # imgs = [img() for img in pd.concat([phone.img.iloc[:100], good.img.iloc[:100]])]
 
     processor = AutoImageProcessor.from_pretrained(
         "facebook/mask2former-swin-base-coco-panoptic"
@@ -18,11 +27,23 @@ def main():
         "facebook/mask2former-swin-base-coco-panoptic"
     ).to("cuda")
 
-    one_hots: list[Tensor[W, H, C]] = [
-        segmentation_pipeline(img, model, processor) for img in imgs[:5]
-    ]
-    one_hots[-1]
-    imgs[4]
+    onehot_path = DATA_PATH / "onehot"
+    onehot_path.mkdir(exist_ok=True)
+    for row in tqdm(df.itertuples(), total=len(df)):
+        path = (onehot_path / row.path.name).with_suffix(".jpg.npz")
+        if path.exists():
+            continue
+        img = row.img()
+        onehot = segmentation_pipeline(img, model, processor)
+        save_onehot(path, onehot)
+
+
+def save_onehot(path: Path, onehot: Tensor[W, H, C]):
+    np.savez_compressed(path, data=onehot.to(bool).numpy())
+
+
+def load_onehot() -> Tensor[W, H, C]:
+    return torch.from_numpy(np.load("test.npz")["data"]).to(torch.float32)
 
 
 def segmentation_pipeline(img: Image.Image, model, processor):
@@ -49,39 +70,40 @@ def extract_onehot(prediction, model_id2label):
     one_hot: Tensor[W, H, C] = torch.zeros(size=segment_arr.shape + (C,))
 
     for segment in prediction["segments_info"]:
-        if (label := model_id2label[segment["label_id"]]) not in MASK_LABELS:
+        try:
+            class_layer = MASK_LABELS.index(model_id2label[segment["label_id"]])
+        except ValueError:
             continue
 
-        class_layer = MASK_LABELS.index(label)
-        one_hot[segment_arr == segment["id"]][..., class_layer] = 1
+        one_hot[..., class_layer][segment_arr == segment["id"]] = 1
+
+    if DISPLAY_IN_NOTEBOOK:
+        draw_semantic_segmentation(one_hot)
 
     return one_hot
 
 
-def draw_semantic_segmentation(one_hot: Tensor[W, H, C], labels):
-    import matplotlib.pyplot as plt
-    import matplotlib.patches as mpatches
-    from matplotlib import cm
-
+def draw_semantic_segmentation(one_hot: Tensor[W, H, C]):
     unhot_encode: Tensor[W, H, C] = torch.ones_like(one_hot).cumsum(axis=-1)
     # The following .sum is arbitrary, could also be .max, since each layer is non-overlapping
     class_arr: Tensor[W, H] = (one_hot * unhot_encode).sum(axis=-1)
+    num2label = dict(enumerate(["None"] + MASK_LABELS))
 
-    plot_labels = ["None"] + labels
-    color_map = cm.get_cmap("viridis", len(plot_labels))
-
-    _, ax = plt.subplots()
-    ax.imshow(class_arr, cmap=color_map, vmax=len(plot_labels))
-
-    handles = [
-        mpatches.Patch(
-            color=color_map(i),
-            label=label,
+    img = hv.Image(class_arr.numpy())
+    display(
+        img.opts(
+            cmap="viridis",
+            width=W,
+            height=H,
+            xaxis=None,
+            yaxis=None,
+            toolbar=None,
+            clim=(-0.5, C + 0.5),
+            colorbar=True,
+            color_levels=C + 1,
+            colorbar_opts={"major_label_overrides": num2label},
         )
-        for i, label in enumerate(plot_labels)
-    ]
-    ax.legend(handles=handles)
-    return ax  # or just show in a notebook
+    )
 
 
 if __name__ == "__main__":

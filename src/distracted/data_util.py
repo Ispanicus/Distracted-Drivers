@@ -8,7 +8,7 @@ DATA_PATH = Path(distracted.__path__[0]).parents[1] / "data"
 assert DATA_PATH.exists()
 
 
-H, W = 640, 480
+H, W = 480, 640
 
 MASK_LABELS = [
     "person",
