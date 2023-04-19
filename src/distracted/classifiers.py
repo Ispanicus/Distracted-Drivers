@@ -1,6 +1,7 @@
 # https://github.com/pytorch/examples/blob/main/mnist/main.py
 
 from torch.utils.data import DataLoader
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -25,9 +26,9 @@ class Net(nn.Module):
         self.dropout1 = nn.Dropout(0.25)
         self.dropout2 = nn.Dropout(0.5)
         self.fc1 = nn.Linear(2304, 128)
-        self.fc2 = nn.Linear(128, 10)
+        self.fc2 = nn.Linear(2688, 10)
 
-    def forward(self, x):
+    def forward(self, x, embeddings):
         print = lambda x: x  # Don't print
         x = self.conv1(x)
         print(f"conv1: {x.shape=}")
@@ -56,7 +57,7 @@ class Net(nn.Module):
         print(f"fc1: {x.shape=}")
         x = F.relu(x)
         x = self.dropout2(x)
-
+        x = torch.cat((x, embeddings), 1)
         x = self.fc2(x)
         print(f"fc2: {x.shape=}")
 
@@ -65,12 +66,14 @@ class Net(nn.Module):
         return output
 
 
-def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
+def train(model, device, train_loader, optimizer, epoch, *, log_interval=10, embeddings):
     model.train()
-    for batch_idx, (data, target) in enumerate(train_loader):
-        data, target = data.to(device), target.to(device)
+    for batch_idx, (data, target, path_name) in enumerate(train_loader):
+        path_names = [x[:-4] for x in path_name]
+        embs = torch.tensor(embeddings.loc[path_names].values)
+        data, target, embs = data.to(device), target.to(device), embs.to(device)
         optimizer.zero_grad()
-        output = model(data)
+        output = model(data, embs)
         loss = F.nll_loss(output, target)
         loss.backward()
         optimizer.step()
@@ -143,17 +146,18 @@ def main():
     segment_dev_loader = DataLoader(
         SegmentDataset("dev", transform=transform), **data_kwargs
     )
+    embeddings = pd.read_parquet(DATA_PATH / "efficientnet_embeddings.parquet")
 
     model = Net().to(device)
-    optimizer = optim.Adadelta(model.parameters(), lr=LR)
+    optimizer = optim.Adadelta(model.parameters(), lr=LR, rho=0, eps=0, weight_decay=0)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=GAMMA)
     for epoch in range(1, EPOCHS + 1):
-        train(model, device, segment_train_loader, optimizer, epoch, log_interval=10)
+        train(model, device, segment_train_loader, optimizer, epoch, log_interval=10, embeddings=embeddings)
         test(model, device, segment_dev_loader)
         scheduler.step()
 
-    if save_model := False:
+    if save_model := True:
         torch.save(model.state_dict(), "cnn.pt")
 
 

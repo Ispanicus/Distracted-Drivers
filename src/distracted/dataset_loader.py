@@ -59,7 +59,6 @@ def dataset_loader():
 
     return dataset
 
-
 class SegmentDataset(Dataset):
     def __init__(
         self,
@@ -94,7 +93,7 @@ class SegmentDataset(Dataset):
             tensor = self.transform(tensor)
         if self.target_transform:
             label = self.target_transform(label)
-        return tensor, label
+        return tensor, label, path.name
 
 
 def create_metadata():
