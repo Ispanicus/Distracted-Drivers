@@ -83,8 +83,8 @@ def permute(x: Tensor[H, W, C]) -> Tensor:
 def main():
     torch.manual_seed(42)
 
-    LR = 0.01
-    GAMMA = 1
+    LR = 2
+    GAMMA = 0.9
     EPOCHS = 10
     device = torch.device("cuda")
 
