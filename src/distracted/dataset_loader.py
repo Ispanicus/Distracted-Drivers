@@ -86,21 +86,22 @@ class DriverDataset(Dataset):
     def __getitem__(self, idx):
         from distracted.image_segmentation import load_onehot
 
-        output = []
         row = self.df.iloc[idx]
-        if "img_name" in self.returns:
-            output.append(row.path.name)
-        if "torch_image" in self.returns:
-            output.append(torchvision.io.read_image(str(row.path.absolute())))
-        if "segment" in self.returns:
-            npz_path = next((DATA_PATH / "onehot").glob(f"{row.path.name}.npz"))
-            output.append(load_onehot(npz_path))
-        if "label" in self.returns:
-            output.append(int(row.classname[1:]))
+        returns = {
+            "img_name": lambda row: row.path.name,
+            "torch_image": lambda row: torchvision.io.read_image(
+                str(row.path.absolute())
+            ),
+            "segment": lambda row: load_onehot(
+                next((DATA_PATH / "onehot").glob(f"{row.path.name}.npz"))
+            ),
+            "label": lambda row: int(row.classname[1:]),
+        }
 
+        output = [returns[key](row) for key in self.returns]
         if self.transform:
             output = self.transform(output)
-        return tuple(output)
+        return output
 
 
 def create_metadata():
@@ -120,16 +121,17 @@ def create_metadata():
 def segment_example():
     BATCH_SIZE = 4
     segment_train_dataset = DriverDataset(
-        "train", returns=["img_name", "torch_image", "segment", "label"]
+        "train",
+        returns=["img_name", "torch_image", "processed_image", "segment", "label"],
     )
     segment_train_dataloader = DataLoader(
         segment_train_dataset, batch_size=BATCH_SIZE, shuffle=True
     )
     for img_names, torch_images, segments, labels in segment_train_dataloader:
-        assert len(img_names) == BATCH_SIZE, 1
-        assert torch_images.shape == (BATCH_SIZE, 3, H, W), 2
-        assert segments.shape == (BATCH_SIZE, H, W, C), 3
-        assert labels.shape == (BATCH_SIZE,), 4
+        assert len(img_names) == BATCH_SIZE
+        assert torch_images.shape == (BATCH_SIZE, 3, H, W)
+        assert segments.shape == (BATCH_SIZE, H, W, C)
+        assert labels.shape == (BATCH_SIZE,)
         break
 
 
