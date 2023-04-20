@@ -91,14 +91,16 @@ def train(model, device, train_loader, optimizer, epoch, *, log_interval=10, emb
             )
 
 
-def test(model, device, test_loader):
+def test(model, device, test_loader, embeddings):
     model.eval()
     test_loss = 0
     correct = 0
     with torch.no_grad():
-        for data, target in test_loader:
-            data, target = data.to(device), target.to(device)
-            output = model(data)
+        for data, target, path_name in test_loader:
+            path_names = [x[:-4] for x in path_name]
+            embs = torch.tensor(embeddings.loc[path_names].values, requires_grad=True)
+            data, target, embs = data.to(device), target.to(device), embs.to(device)
+            output = model(data, embs)
             test_loss += F.nll_loss(
                 output, target, reduction="sum"
             ).item()  # sum up batch loss
