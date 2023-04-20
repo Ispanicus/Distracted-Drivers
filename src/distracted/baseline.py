@@ -90,15 +90,20 @@ def main():
         "drop_last": True,  # Drop last batch if it's not full
     }
 
-    transform = transforms.Compose([permute, transforms.Normalize((0,), (1,))])
+    preprocessor = EfficientNetImageProcessor.from_pretrained('google/efficientnet-b0')
 
+    def transform_images(x):
+        images, labels = x
+        x[0] = preprocessor(images, return_tensors="pt")
+        return x 
+    
     train_loader = DataLoader(
-        DriverDataset("train", returns=["torch_image","label"], transform=transform), **data_kwargs
+        DriverDataset("train", returns=["torch_image","label"], transform=transform_images), **data_kwargs
     )
     dev_loader = DataLoader(
-        DriverDataset("dev", returns=["torch_image","label"], transform=transform), **data_kwargs
+        DriverDataset("dev", returns=["torch_image","label"], transform=transform_images), **data_kwargs
     )
- 
+    
     model = EfficientNetForImageClassification.from_pretrained('google/efficientnet-b0')
 
     # Set requires_grad to False for all layers except the last two blocks
@@ -108,6 +113,7 @@ def main():
     config = model.config
     num_classes = 10
     model.classifier = nn.Linear(config.hidden_dim, num_classes)
+
     for param in model.classifier.parameters():
         param.requires_grad = True
     for name, param in model.named_parameters():
