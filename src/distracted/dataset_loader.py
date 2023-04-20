@@ -1,8 +1,12 @@
+from lib2to3.pgen2.driver import Driver
 from distracted.data_util import DATA_PATH, get_train_df, H, W, C, Tensor
+import torchvision.io
+import functools
 from torch.utils.data import Dataset, DataLoader
 import torch
 import pandas as pd
-from datasets import load_dataset, Features, Image, ClassLabel
+from datasets import load_dataset
+from PIL import Image
 from typing import Literal
 from pathlib import Path
 import pickle
@@ -59,41 +63,44 @@ def dataset_loader():
 
     return dataset
 
-class SegmentDataset(Dataset):
+
+class DriverDataset(Dataset):
     def __init__(
         self,
         split: Literal["train"] | Literal["dev"] | Literal["test"],
+        returns=["img_name", "torch_image", "segment", "label"],
         transform=None,
-        target_transform=None,
     ):
-        df = get_train_df()
-        df = df.query(f"subject in @subjects[@split]")
-        ok_files = set(df.path.map(lambda p: p.name.replace(".jpg", ".jpg.npz")))
-
-        self.arr_paths = [
-            p for p in (DATA_PATH / "onehot").glob("*.npz") if p.name in ok_files
-        ]
         self.transform = transform
-        self.target_transform = target_transform
+        self.returns = returns
+        self.df = self._df().query(f"subject in @subjects[@split]")
 
-        self.img_to_class = dict(
-            zip(df.path.map(lambda p: p.name), df.classname.str[-1].astype(int))
-        )
+    @staticmethod
+    @functools.cache
+    def _df():
+        return get_train_df()
 
     def __len__(self):
-        return len(self.arr_paths)
+        return len(self.df)
 
     def __getitem__(self, idx):
         from distracted.image_segmentation import load_onehot
 
-        path = self.arr_paths[idx]
-        tensor: Tensor[H, W, C] = load_onehot(path)
-        label = self.img_to_class[path.name.replace(".jpg.npz", ".jpg")]
+        output = []
+        row = self.df.iloc[idx]
+        if "img_name" in self.returns:
+            output.append(row.path.name)
+        if "torch_image" in self.returns:
+            output.append(torchvision.io.read_image(str(row.path.absolute())))
+        if "segment" in self.returns:
+            npz_path = next((DATA_PATH / "onehot").glob(f"{row.path.name}.npz"))
+            output.append(load_onehot(npz_path))
+        if "label" in self.returns:
+            output.append(int(row.classname[1:]))
+
         if self.transform:
-            tensor = self.transform(tensor)
-        if self.target_transform:
-            label = self.target_transform(label)
-        return tensor, label, path.name
+            output = self.transform(output)
+        return tuple(output)
 
 
 def create_metadata():
@@ -112,13 +119,17 @@ def create_metadata():
 
 def segment_example():
     BATCH_SIZE = 4
-    segment_train_dataset = SegmentDataset("train", None, None)
+    segment_train_dataset = DriverDataset(
+        "train", returns=["img_name", "torch_image", "segment", "label"]
+    )
     segment_train_dataloader = DataLoader(
         segment_train_dataset, batch_size=BATCH_SIZE, shuffle=True
     )
-    for train_features, train_labels in segment_train_dataloader:
-        assert train_features.shape == (BATCH_SIZE, H, W, C)
-        assert train_labels.shape == (BATCH_SIZE,)
+    for img_names, torch_images, segments, labels in segment_train_dataloader:
+        assert len(img_names) == BATCH_SIZE, 1
+        assert torch_images.shape == (BATCH_SIZE, 3, H, W), 2
+        assert segments.shape == (BATCH_SIZE, H, W, C), 3
+        assert labels.shape == (BATCH_SIZE,), 4
         break
 
 
