@@ -11,6 +11,7 @@ from torchvision import transforms
 from torch.optim.lr_scheduler import StepLR
 from distracted.data_util import DATA_PATH, get_train_df, H, W, C, Tensor
 from distracted.dataset_loader import DriverDataset
+from transformers import EfficientNetForImageClassification
 import mlflow
 from mlflow import log_metric, log_metrics, log_params, log_artifacts, set_tracking_uri, set_experiment
 
@@ -98,15 +99,15 @@ def main():
         DriverDataset("dev", returns=["torch_image","label"], transform=transform), **data_kwargs
     )
  
-    model = EfficientNet.from_pretrained('efficientnet-b0')
+    model = EfficientNetForImageClassification.from_pretrained('google/efficientnet-b0')
 
     # Set requires_grad to False for all layers except the last two blocks
     for param in model.parameters():
         param.requires_grad = False
 
     num_classes = 10
-    model._fc = nn.Linear(model._fc.in_features, num_classes)
-    for param in model._fc.parameters():
+    model.classifier = nn.Linear(model.classifier.in_features, num_classes)
+    for param in model.classifier.parameters():
         param.requires_grad = True
     for name, param in model.named_parameters():
         if 'top' in name:
