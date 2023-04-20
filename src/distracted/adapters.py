@@ -1,0 +1,130 @@
+from transformers import EfficientNetForImageClassification
+import math
+from torch import nn
+import torch
+
+# Hack to get encoder class from transformer library
+model = EfficientNetForImageClassification.from_pretrained("google/efficientnet-b0")
+encoder_instance = model.efficientnet.encoder
+encoder_class = encoder_instance.__class__
+
+# Following two functions taken from modeling_efficientnet.py
+def round_repeats(repeats,depth_coefficient):
+            # Round number of block repeats based on depth multiplier.
+            return int(math.ceil(depth_coefficient * repeats))
+def round_filters(config, num_channels: int):
+    r"""
+    Round number of filters based on depth multiplier.
+    """
+    divisor = config.depth_divisor
+    num_channels *= config.width_coefficient
+    new_dim = max(divisor, int(num_channels + divisor / 2) // divisor * divisor)
+
+    # Make sure that round down does not go down by more than 10%.
+    if new_dim < 0.9 * num_channels:
+        new_dim += divisor
+
+    return int(new_dim)
+
+class EfficientNetAdapterEncoding(encoder_class):
+    def __init__(self,config,model,adapter_idxs,adapter_base_block_idx):
+        encoder_instance = model.efficientnet.encoder
+        self.config = model.config
+        super().__init__(self.config)
+    
+        self.blocks = encoder_instance.blocks
+        self.top_conv = encoder_instance.top_conv
+        self.top_bn = encoder_instance.top_bn
+        self.top_activation = encoder_instance.top_activation
+        self.adapter_idxs = adapter_idxs # idx of block before adapter
+        self.adapter_base_block_idx = adapter_base_block_idx # base block idx before adapter
+
+        
+        adapters = []
+
+        block_class = self.blocks[0].__class__
+        num_base_blocks = len(config.in_channels)
+        block_dimensions = []
+        for i in range(num_base_blocks):
+            block_out_dim = round_filters(config,config.out_channels[i])
+            block_in_dim = round_filters(config,config.in_channels[i]) 
+            for _ in range(round_repeats(config.num_block_repeats[i],config.depth_coefficient)):
+                block_dimensions.append((block_in_dim,block_out_dim))
+        
+        for idx,base_idx in zip(self.adapter_idxs,self.adapter_base_block_idx):
+            adapter_dimension = block_dimensions[idx]
+            adapter = block_class(
+                 config=config,
+                 in_dim=adapter_dimension[0],
+                 out_dim=adapter_dimension[1],
+                 stride=config.strides[base_idx],
+                 kernel_size=config.kernel_sizes[base_idx],
+                 expand_ratio=1, # No expansion
+                 drop_rate=config.drop_connect_rate * idx / len(self.blocks),
+                 id_skip=False, # This is only true for initial blocks in base blocks
+                 adjust_padding=True, # Always true for this model, since no block num in config.depthwise_padding
+            )
+            adapters.append(adapter)
+        self.adapters=nn.ModuleList(adapters)
+
+
+
+       
+
+
+    def forward(self,
+                hidden_states,
+                output_hidden_states = False,
+                return_dict = True):
+
+
+        all_hidden_states = (hidden_states,) if output_hidden_states else None
+        # adapters = iter(self.adapters)
+        for idx, block in enumerate(self.blocks):
+            hidden_states = block(hidden_states)
+            if output_hidden_states:
+                 all_hidden_states += (hidden_states,)
+            if idx in self.adapter_idxs:
+                adapter = next(self.adapters)
+                hidden_states = adapter(hidden_states)
+                if output_hidden_states:
+                    all_hidden_states += (hidden_states,)
+
+        if not return_dict:
+             return tuple(v for v in [hidden_states, all_hidden_states] if v is not None)
+        hidden_states = self.top_conv(hidden_states)
+        hidden_states = self.top_bn(hidden_states)
+        hidden_states = self.top_activation(hidden_states)
+            
+        return (hidden_states,all_hidden_states) # Should work as forward pass just takes encoder_output[0]
+    
+
+def get_adapter_model(
+          base_model_suffix: str, # ex: b0
+          adapter_locations: list[tuple], # list of (base_block_idx,adapter_block_idx)
+          ):
+
+    adapter_idxs = [adapter_block_idx for _,adapter_block_idx in adapter_locations]
+    adapter_base_block_idx = [base_block_idx for base_block_idx,_ in adapter_locations]
+    model = EfficientNetForImageClassification.from_pretrained("google/efficientnet-"+base_model_suffix)
+    config = model.config
+    adapter_encoding = EfficientNetAdapterEncoding(config,model,adapter_idxs,adapter_base_block_idx)
+    model.efficientnet.encoder = adapter_encoding
+    return model 
+
+
+def print_block_layout(config):
+    """Valid block numbers shows options for adapter locations when using get_adapter_model"""
+    num_base_blocks = len(config.in_channels)
+    block_number = -1
+    for i in range(num_base_blocks):
+            in_dim = round_filters(config, config.in_channels[i])
+            out_dim = round_filters(config, config.out_channels[i])      
+
+            base_block = []
+            for j in range(round_repeats(config.num_block_repeats[i],config.depth_coefficient)):
+                in_dim = out_dim if j > 0 else in_dim
+                base_block.append((in_dim,out_dim))
+                block_number += 1
+            print(f"Base block {i}: {base_block} valid block numbers: {(i,block_number)}")
+    print(f"Avoid block numbers {config.depthwise_padding} since they have adjust_padding=Falsae")
