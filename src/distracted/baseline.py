@@ -105,13 +105,16 @@ def main():
     for param in model.parameters():
         param.requires_grad = False
 
+    config = model.config
     num_classes = 10
-    model.classifier = nn.Linear(model.classifier.in_features, num_classes)
+    model.classifier = nn.Linear(config.hidden_dim, num_classes)
     for param in model.classifier.parameters():
         param.requires_grad = True
     for name, param in model.named_parameters():
         if 'top' in name:
             param.requires_grad = True
+            print('top layer found')
+
     model.to(device)
 
     optimizer = optim.Adadelta(model.parameters(), lr=LR, )#rho=0, eps=0, weight_decay=0)
