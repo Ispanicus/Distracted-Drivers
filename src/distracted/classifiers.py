@@ -74,6 +74,7 @@ def train(model, device, train_loader, optimizer, epoch, *, log_interval=10, emb
         data, target, embs = data.to(device), target.to(device), embs.to(device)
         optimizer.zero_grad()
         output = model(data, embs)
+        print(data.shape, embs.shape, output.shape, target.shape)
         loss = F.nll_loss(output, target)
         loss.backward()
         optimizer.step()
@@ -154,7 +155,7 @@ def main():
     scheduler = StepLR(optimizer, step_size=1, gamma=GAMMA)
     for epoch in range(1, EPOCHS + 1):
         train(model, device, segment_train_loader, optimizer, epoch, log_interval=10, embeddings=embeddings)
-        test(model, device, segment_dev_loader)
+        test(model, device, segment_dev_loader, embeddings=embeddings)
         scheduler.step()
 
     if save_model := True:
