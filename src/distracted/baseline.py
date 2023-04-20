@@ -12,6 +12,7 @@ from torch.optim.lr_scheduler import StepLR
 from distracted.data_util import DATA_PATH, get_train_df, H, W, C, Tensor
 from distracted.dataset_loader import SegmentDataset
 import mlflow
+from mlflow import log_metric, log_metrics, log_params, log_artifacts, set_tracking_uri, set_experiment
 
 torch.manual_seed(1)
 
@@ -24,48 +25,12 @@ torch.backends.cuda.matmul.allow_tf32 = True
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels=C, out_channels=32, kernel_size=50, stride=4)
-        self.conv2 = nn.Conv2d(32, 64, 20, 2)
-        self.conv3 = nn.Conv2d(64, 128, 5, 1)
-        self.dropout1 = nn.Dropout(0.25)
-        self.dropout2 = nn.Dropout(0.5)
-        self.fc1 = nn.Linear(2304, 128)
-        self.fc2 = nn.Linear(2688, 10)
+        self.fc1 = nn.Linear(2560, 10)
 
     def forward(self, x, embeddings):
         print = lambda x: x  # Don't print
-        x = self.conv1(x)
-        print(f"conv1: {torch.mean(x)=}")
-        x = F.relu(x)
 
-        x = self.conv2(x)
-        print(f"conv2: {torch.mean(x)=}")
-        x = F.relu(x)
-
-        x = F.max_pool2d(x, 4)
-        print(f"max_pool2d: {torch.mean(x)=}")
-        x = self.dropout1(x)
-
-        x = self.conv3(x)
-        print(f"conv3: {torch.mean(x)=}")
-        x = F.relu(x)
-
-        x = F.max_pool2d(x, 2)
-        print(f"max_pool2d: {torch.mean(x)=}")
-        x = self.dropout1(x)
-
-        x = torch.flatten(x, 1)
-        print(f"flatten: {torch.mean(x)=}")
-
-        x = self.fc1(x)
-        print(f"fc1: {torch.mean(x)=}")
-        x = F.relu(x)
-        x = self.dropout2(x)
-        print(f"embeddings: {torch.mean(embeddings)=}")
-        x = torch.cat((x, embeddings), 1)
-        x = self.fc2(x)
-        print(f"fc2: {torch.mean(x)=}")
-
+        x = self.fc1(embeddings)
         output = F.log_softmax(x, dim=1)
         print(f"log_softmax: {torch.mean(output)=}")
         return output
@@ -82,7 +47,7 @@ def train(model, device, train_loader, optimizer, epoch, *, log_interval=10, emb
         loss = F.nll_loss(output, target)
         loss.backward()
         optimizer.step()
-        mlflow.log_metric("loss", loss.item())
+        log_metric("loss", loss.item())
         if batch_idx % log_interval == 0:
             print(
                 "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
@@ -171,7 +136,7 @@ def main():
 
         state_dict = model.state_dict()
         mlflow.pytorch.log_state_dict(state_dict, artifact_path="model")
-        mlflow.log_params({"lr": LR, "gamma": GAMMA, "epochs": EPOCHS})
+        log_params({"lr": LR, "gamma": GAMMA, "epochs": EPOCHS})
 
         for epoch in range(1, EPOCHS + 1):
             train(model, device, segment_train_loader, optimizer, epoch, log_interval=10, embeddings=embeddings)
