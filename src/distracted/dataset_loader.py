@@ -10,6 +10,7 @@ from PIL import Image
 from typing import Literal
 from pathlib import Path
 import pickle
+from transformers import EfficientNetImageProcessor
 
 # __df = get_train_df()
 # __dev_subjects = (
@@ -68,17 +69,14 @@ class DriverDataset(Dataset):
     def __init__(
         self,
         split: Literal["train"] | Literal["dev"] | Literal["test"],
-        returns=["img_name", "torch_image", "segment", "label"],
+        returns=["img_name", "torch_image", "preprocessed_image", "segment", "label"],
         transform=None,
     ):
         self.transform = transform
         self.returns = returns
-        self.df = self._df().query(f"subject in @subjects[@split]")
-
-    @staticmethod
-    @functools.cache
-    def _df():
-        return get_train_df()
+        self.df = (
+            get_train_df().query(f"subject in @subjects[@split]").drop(columns="img")
+        )
 
     def __len__(self):
         return len(self.df)
@@ -87,10 +85,17 @@ class DriverDataset(Dataset):
         from distracted.image_segmentation import load_onehot
 
         row = self.df.iloc[idx]
+
+        if "torch_image" or "preprocessed_image" in self.returns:
+            img = torchvision.io.read_image(str(row.path.absolute()))
+            preprocessor = EfficientNetImageProcessor.from_pretrained
+
+        # Do callables, such that we do lazy loading
         returns = {
             "img_name": lambda row: row.path.name,
-            "torch_image": lambda row: torchvision.io.read_image(
-                str(row.path.absolute())
+            "torch_image": lambda row: img,
+            "preprocessed_image": lambda row: preprocessor("google/efficientnet-b0")(
+                img, return_tensors="pt"
             ),
             "segment": lambda row: load_onehot(
                 next((DATA_PATH / "onehot").glob(f"{row.path.name}.npz"))
@@ -122,14 +127,21 @@ def segment_example():
     BATCH_SIZE = 4
     segment_train_dataset = DriverDataset(
         "train",
-        returns=["img_name", "torch_image", "processed_image", "segment", "label"],
+        returns=["img_name", "torch_image", "preprocessed_image", "segment", "label"],
     )
     segment_train_dataloader = DataLoader(
-        segment_train_dataset, batch_size=BATCH_SIZE, shuffle=True
+        segment_train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2
     )
-    for img_names, torch_images, segments, labels in segment_train_dataloader:
+    for (
+        img_names,
+        torch_images,
+        preprocessed,
+        segments,
+        labels,
+    ) in segment_train_dataloader:
         assert len(img_names) == BATCH_SIZE
         assert torch_images.shape == (BATCH_SIZE, 3, H, W)
+        assert "pixel_values" in preprocessed
         assert segments.shape == (BATCH_SIZE, H, W, C)
         assert labels.shape == (BATCH_SIZE,)
         break
