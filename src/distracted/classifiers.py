@@ -16,6 +16,18 @@ B = BATCH_SIZE = 128  # For 12GB VRAM
 torch.backends.cudnn.benchmark = True
 torch.backends.cuda.matmul.allow_tf32 = True
 
+from time import perf_counter
+from contextlib import contextmanager
+import datetime as dt
+
+
+@contextmanager
+def timeit(msg: str) -> float:
+    start = perf_counter()
+    start_date = f"{dt.datetime.now():%H:%M:%S}"
+    yield
+    print(f"{start_date} Time: {msg} {perf_counter() - start:.3f} seconds")
+
 
 class Net(nn.Module):
     def __init__(self):
@@ -66,7 +78,9 @@ class Net(nn.Module):
         return output
 
 
-def train(model, device, train_loader, optimizer, epoch, *, log_interval=10, embeddings):
+def train(
+    model, device, train_loader, optimizer, epoch, *, log_interval=10, embeddings
+):
     model.train()
     for batch_idx, (data, target, path_name) in enumerate(train_loader):
         path_names = [x[:-4] for x in path_name]
@@ -153,7 +167,15 @@ def main():
 
     scheduler = StepLR(optimizer, step_size=1, gamma=GAMMA)
     for epoch in range(1, EPOCHS + 1):
-        train(model, device, segment_train_loader, optimizer, epoch, log_interval=10, embeddings=embeddings)
+        train(
+            model,
+            device,
+            segment_train_loader,
+            optimizer,
+            epoch,
+            log_interval=10,
+            embeddings=embeddings,
+        )
         test(model, device, segment_dev_loader)
         scheduler.step()
 
