@@ -15,7 +15,7 @@ from transformers import EfficientNetForImageClassification, EfficientNetImagePr
 import mlflow
 from mlflow import log_metric, log_metrics, log_params, log_artifacts, set_tracking_uri, set_experiment
 
-B = BATCH_SIZE = 64  # 128 For 12GB VRAM
+B = BATCH_SIZE = 512 # 128 For 12GB VRAM
 
 preprocessor = EfficientNetImageProcessor.from_pretrained('google/efficientnet-b0')
 
@@ -58,7 +58,7 @@ def test(model, device, test_loader):
             test_loss += F.cross_entropy(
                 output.logits, target, reduction="sum"
             ).item()  # sum up batch loss
-            pred = output.argmax(
+            pred = output.logits.argmax(
                 dim=1, keepdim=True
             )  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
@@ -85,7 +85,7 @@ def main():
 
     LR = 0.01
     GAMMA = 1
-    EPOCHS = 1
+    EPOCHS = 10
     device = torch.device("cuda")
 
     data_kwargs = {
