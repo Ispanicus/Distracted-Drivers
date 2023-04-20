@@ -11,11 +11,13 @@ from torchvision import transforms
 from torch.optim.lr_scheduler import StepLR
 from distracted.data_util import DATA_PATH, get_train_df, H, W, C, Tensor
 from distracted.dataset_loader import DriverDataset
-from transformers import EfficientNetForImageClassification
+from transformers import EfficientNetForImageClassification, EfficientNetImageProcessor
 import mlflow
 from mlflow import log_metric, log_metrics, log_params, log_artifacts, set_tracking_uri, set_experiment
 
 B = BATCH_SIZE = 64  # 128 For 12GB VRAM
+
+preprocessor = EfficientNetImageProcessor.from_pretrained('google/efficientnet-b0')
 
 torch.backends.cudnn.benchmark = True
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -23,10 +25,12 @@ torch.backends.cuda.matmul.allow_tf32 = True
 def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
+        len_data = len(data)
+        data = preprocessor(data, return_tensors="pt")        
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
-        output = model(data)
-        loss = F.cross_entropy(output, target)
+        output = model(**data)
+        loss = F.cross_entropy(output.logits, target)
         loss.backward()
         optimizer.step()
         log_metric("loss", loss.item())
@@ -34,7 +38,7 @@ def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
             print(
                 "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
                     epoch,
-                    batch_idx * len(data),
+                    batch_idx * len_data,
                     len(train_loader.dataset),
                     100.0 * batch_idx / len(train_loader),
                     loss.item(),
@@ -48,10 +52,11 @@ def test(model, device, test_loader):
     correct = 0
     with torch.no_grad():
         for data, target in test_loader:
+            data = preprocessor.preprocess(data, return_tensors="pt")
             data, target = data.to(device), target.to(device)
-            output = model(data)
+            output = model(**data)
             test_loss += F.cross_entropy(
-                output, target, reduction="sum"
+                output.logits, target, reduction="sum"
             ).item()  # sum up batch loss
             pred = output.argmax(
                 dim=1, keepdim=True
@@ -74,6 +79,7 @@ def permute(x: Tensor[H, W, C]) -> Tensor:
     x: Tensor[C, H, W] = x.permute(2, 0, 1)
     return x
 
+
 def main():
     torch.manual_seed(42)
 
@@ -90,20 +96,19 @@ def main():
         "drop_last": True,  # Drop last batch if it's not full
     }
 
-    preprocessor = EfficientNetImageProcessor.from_pretrained('google/efficientnet-b0')
-
-    def transform_images(x):
-        images, labels = x
-        x[0] = preprocessor(images, return_tensors="pt")
-        return x 
-    
     train_loader = DataLoader(
-        DriverDataset("train", returns=["torch_image","label"], transform=transform_images), **data_kwargs
+        DriverDataset("train", returns=["torch_image","label"], 
+                      #transform=transform_images
+                      )
+                       , **data_kwargs
     )
+
     dev_loader = DataLoader(
-        DriverDataset("dev", returns=["torch_image","label"], transform=transform_images), **data_kwargs
+        DriverDataset("dev", returns=["torch_image","label"], 
+                      #transform=transform_images
+                      ), **data_kwargs
     )
-    
+
     model = EfficientNetForImageClassification.from_pretrained('google/efficientnet-b0')
 
     # Set requires_grad to False for all layers except the last two blocks
@@ -119,7 +124,6 @@ def main():
     for name, param in model.named_parameters():
         if 'top' in name:
             param.requires_grad = True
-            print('top layer found')
 
     model.to(device)
 
