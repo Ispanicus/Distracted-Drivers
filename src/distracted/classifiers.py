@@ -11,8 +11,12 @@ from torchvision import transforms
 from torch.optim.lr_scheduler import StepLR
 from distracted.data_util import DATA_PATH, get_train_df, H, W, C, Tensor
 from distracted.dataset_loader import SegmentDataset
+import mlflow
+from mlflow import log_metrics, log_params, log_artifacts, set_tracking_uri, set_experiment
 
-B = BATCH_SIZE = 128  # For 12GB VRAM
+torch.manual_seed(1)
+
+B = BATCH_SIZE = 64  # For 12GB VRAM
 
 torch.backends.cudnn.benchmark = True
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -79,6 +83,7 @@ def train(model, device, train_loader, optimizer, epoch, *, log_interval=10, emb
         loss = F.nll_loss(output, target)
         loss.backward()
         optimizer.step()
+        log_metric("loss", loss.item())
         if batch_idx % log_interval == 0:
             print(
                 "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
@@ -135,7 +140,7 @@ def main():
 
     LR = 1
     GAMMA = 0.7
-    EPOCHS = 10
+    EPOCHS = 1
     device = torch.device("cuda")
 
     data_kwargs = {
@@ -160,13 +165,20 @@ def main():
     optimizer = optim.Adadelta(model.parameters(), lr=LR, )#rho=0, eps=0, weight_decay=0)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=GAMMA)
-    for epoch in range(1, EPOCHS + 1):
-        train(model, device, segment_train_loader, optimizer, epoch, log_interval=10, embeddings=embeddings)
-        test(model, device, segment_dev_loader, embeddings=embeddings)
-        scheduler.step()
 
-    if save_model := True:
-        torch.save(model.state_dict(), "cnn.pt")
+    with mlflow.start_run():
+        mlflow.set_tracking_uri(DATA_PATH)
+        state_dict = model.state_dict()
+        mlflow.pytorch.log_state_dict(state_dict, artifact_path="model")
+        log_params({"lr": LR, "gamma": GAMMA, "epochs": EPOCHS})
+
+        for epoch in range(1, EPOCHS + 1):
+            train(model, device, segment_train_loader, optimizer, epoch, log_interval=10, embeddings=embeddings)
+            test(model, device, segment_dev_loader, embeddings=embeddings)
+            
+            scheduler.step()
+
+        mlflow.pytorch.log_model(model, "model")
 
 
 if __name__ == "__main__":
