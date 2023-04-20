@@ -20,6 +20,18 @@ B = BATCH_SIZE = 64  # 128 For 12GB VRAM
 torch.backends.cudnn.benchmark = True
 torch.backends.cuda.matmul.allow_tf32 = True
 
+from time import perf_counter
+from contextlib import contextmanager
+import datetime as dt
+
+
+@contextmanager
+def timeit(msg: str) -> float:
+    start = perf_counter()
+    start_date = f"{dt.datetime.now():%H:%M:%S}"
+    yield
+    print(f"{start_date} Time: {msg} {perf_counter() - start:.3f} seconds")
+
 
 class Net(nn.Module):
     def __init__(self):
@@ -71,7 +83,9 @@ class Net(nn.Module):
         return output
 
 
-def train(model, device, train_loader, optimizer, epoch, *, log_interval=10, embeddings):
+def train(
+    model, device, train_loader, optimizer, epoch, *, log_interval=10, embeddings
+):
     model.train()
     for batch_idx, (data, target, path_name) in enumerate(train_loader):
         path_names = [x[:-4] for x in path_name]
@@ -129,10 +143,12 @@ def permute(x: Tensor[H, W, C]) -> Tensor:
     x: Tensor[C, H, W] = x.permute(2, 0, 1)
     return x
 
+
 @functools.cache
 def load_embeddings():
     embeddings = pd.read_parquet(DATA_PATH / "efficientnet_embeddings.parquet")
     return embeddings
+
 
 def main():
     torch.manual_seed(42)
@@ -161,22 +177,32 @@ def main():
     embeddings = load_embeddings()
 
     model = Net().to(device)
-    optimizer = optim.Adadelta(model.parameters(), lr=LR, )#rho=0, eps=0, weight_decay=0)
+    optimizer = optim.Adadelta(
+        model.parameters(),
+        lr=LR,
+    )  # rho=0, eps=0, weight_decay=0)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=GAMMA)
 
-    mlflow.set_tracking_uri(uri=f'file://{DATA_PATH}\mlruns')
+    mlflow.set_tracking_uri(uri=f"file://{DATA_PATH}\mlruns")
 
     with mlflow.start_run():
-
         state_dict = model.state_dict()
         mlflow.pytorch.log_state_dict(state_dict, artifact_path="model")
         mlflow.log_params({"lr": LR, "gamma": GAMMA, "epochs": EPOCHS})
 
         for epoch in range(1, EPOCHS + 1):
-            train(model, device, segment_train_loader, optimizer, epoch, log_interval=10, embeddings=embeddings)
+            train(
+                model,
+                device,
+                segment_train_loader,
+                optimizer,
+                epoch,
+                log_interval=10,
+                embeddings=embeddings,
+            )
             test(model, device, segment_dev_loader, embeddings=embeddings)
-            
+
             scheduler.step()
 
         mlflow.pytorch.log_model(model, "model")

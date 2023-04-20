@@ -10,11 +10,11 @@ from PIL import Image
 from distracted.data_util import DATA_PATH
 from distracted.dataset_loader import dataset_loader
 
-config = EfficientNetConfig.from_pretrained("google/efficientnet-b7")
-config.num_labels = 0
+config = EfficientNetConfig.from_pretrained("google/efficientnet-b0")
+config.num_labels = 10
 model = EfficientNetForImageClassification(config).to("cuda")
 
-preprocessor = EfficientNetImageProcessor.from_pretrained("google/efficientnet-b7")
+preprocessor = EfficientNetImageProcessor.from_pretrained("google/efficientnet-b0")
 dataset = dataset_loader()
 
 index = []
