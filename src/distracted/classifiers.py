@@ -1,5 +1,6 @@
 # https://github.com/pytorch/examples/blob/main/mnist/main.py
 
+import functools
 from torch.utils.data import DataLoader
 import pandas as pd
 import torch
@@ -31,38 +32,39 @@ class Net(nn.Module):
     def forward(self, x, embeddings):
         print = lambda x: x  # Don't print
         x = self.conv1(x)
-        print(f"conv1: {x.shape=}")
+        print(f"conv1: {torch.mean(x)=}")
         x = F.relu(x)
 
         x = self.conv2(x)
-        print(f"conv2: {x.shape=}")
+        print(f"conv2: {torch.mean(x)=}")
         x = F.relu(x)
 
         x = F.max_pool2d(x, 4)
-        print(f"max_pool2d: {x.shape=}")
+        print(f"max_pool2d: {torch.mean(x)=}")
         x = self.dropout1(x)
 
         x = self.conv3(x)
-        print(f"conv3: {x.shape=}")
+        print(f"conv3: {torch.mean(x)=}")
         x = F.relu(x)
 
         x = F.max_pool2d(x, 2)
-        print(f"max_pool2d: {x.shape=}")
+        print(f"max_pool2d: {torch.mean(x)=}")
         x = self.dropout1(x)
 
         x = torch.flatten(x, 1)
-        print(f"flatten: {x.shape=}")
+        print(f"flatten: {torch.mean(x)=}")
 
         x = self.fc1(x)
-        print(f"fc1: {x.shape=}")
+        print(f"fc1: {torch.mean(x)=}")
         x = F.relu(x)
         x = self.dropout2(x)
+        print(f"embeddings: {torch.mean(embeddings)=}")
         x = torch.cat((x, embeddings), 1)
         x = self.fc2(x)
-        print(f"fc2: {x.shape=}")
+        print(f"fc2: {torch.mean(x)=}")
 
         output = F.log_softmax(x, dim=1)
-        print(f"log_softmax: {output.shape=}")
+        print(f"log_softmax: {torch.mean(output)=}")
         return output
 
 
@@ -70,11 +72,10 @@ def train(model, device, train_loader, optimizer, epoch, *, log_interval=10, emb
     model.train()
     for batch_idx, (data, target, path_name) in enumerate(train_loader):
         path_names = [x[:-4] for x in path_name]
-        embs = torch.tensor(embeddings.loc[path_names].values)
+        embs = torch.tensor(embeddings.loc[path_names].values, requires_grad=True)
         data, target, embs = data.to(device), target.to(device), embs.to(device)
         optimizer.zero_grad()
         output = model(data, embs)
-        print(data.shape, embs.shape, output.shape, target.shape)
         loss = F.nll_loss(output, target)
         loss.backward()
         optimizer.step()
@@ -122,6 +123,10 @@ def permute(x: Tensor[H, W, C]) -> Tensor:
     x: Tensor[C, H, W] = x.permute(2, 0, 1)
     return x
 
+@functools.cache
+def load_embeddings():
+    embeddings = pd.read_parquet(DATA_PATH / "efficientnet_embeddings.parquet")
+    return embeddings
 
 def main():
     torch.manual_seed(42)
@@ -147,10 +152,10 @@ def main():
     segment_dev_loader = DataLoader(
         SegmentDataset("dev", transform=transform), **data_kwargs
     )
-    embeddings = pd.read_parquet(DATA_PATH / "efficientnet_embeddings.parquet")
+    embeddings = load_embeddings()
 
     model = Net().to(device)
-    optimizer = optim.Adadelta(model.parameters(), lr=LR, rho=0, eps=0, weight_decay=0)
+    optimizer = optim.Adadelta(model.parameters(), lr=LR, )#rho=0, eps=0, weight_decay=0)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=GAMMA)
     for epoch in range(1, EPOCHS + 1):
