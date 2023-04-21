@@ -77,12 +77,12 @@ class EfficientNetAdapterEncoding(encoder_class):
             )
             adapters.append(adapter)
         self.adapters=nn.ModuleList(adapters)
+        assert self.adapters[0].__class__ == self.blocks[0].__class__
 
     def forward(self,
                 hidden_states,
                 output_hidden_states = False,
-                return_dict = True):
-
+                return_dict = True) -> BaseModelOutputWithNoAttention:
 
         all_hidden_states = (hidden_states,) if output_hidden_states else None
         adapters = iter(self.adapters)
