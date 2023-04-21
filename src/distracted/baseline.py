@@ -23,6 +23,7 @@ MODEL_NAME = "google/efficientnet-b0"
 # MODEL_NAME = "google/efficientnet-b3"
 MODEL_NAME_SUFFIX = MODEL_NAME[-2:]
 USE_ADAPTER = True
+MODEL_NAME_MLFOW = MODEL_NAME + "_adapter" if USE_ADAPTER else MODEL_NAME
 ADAPTERS=[(3,7)]
 LR = 2
 GAMMA = 1
@@ -153,7 +154,7 @@ def main():
         artifact_path = "model"
         state_dict = model.state_dict()
 
-        log_params({"lr": LR, "gamma": GAMMA, "epochs": EPOCHS, "batch_size": BATCH_SIZE, "model_name": MODEL_NAME})
+        log_params({"lr": LR, "gamma": GAMMA, "epochs": EPOCHS, "batch_size": BATCH_SIZE, "model_name": MODEL_NAME_MLFOW, "adapters": ADAPTERS})
 
         for epoch in range(1, EPOCHS + 1):
             train(model, device, train_loader, optimizer, epoch, log_interval=10)
