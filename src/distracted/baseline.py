@@ -17,7 +17,7 @@ import mlflow
 from mlflow import log_metric, log_metrics, log_params, log_artifacts, set_tracking_uri, set_experiment
 
 
-B = BATCH_SIZE = 64 # 128 For 12GB VRAM
+B = BATCH_SIZE = 32 # 128 For 12GB VRAM
 
 MODEL_NAME = "google/efficientnet-b0"
 # MODEL_NAME = "google/efficientnet-b3"

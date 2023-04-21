@@ -1,10 +1,10 @@
 from typing import Optional, Tuple
-from attr import dataclass
+from dataclasses import dataclass
 from transformers import EfficientNetForImageClassification
 import math
 from torch import nn
 import torch
-from transformers.modeling_outputs import ModelOutput
+from transformers.utils.generic import ModelOutput
 #   Hack to get encoder class from transformer library
 model = EfficientNetForImageClassification.from_pretrained("google/efficientnet-b0")
 encoder_instance = model.efficientnet.encoder
@@ -78,6 +78,7 @@ class EfficientNetAdapterEncoding(encoder_class):
             adapters.append(adapter)
         self.adapters=nn.ModuleList(adapters)
         assert self.adapters[0].__class__ == self.blocks[0].__class__
+        assert len(self.adapters) == len(self.adapter_idxs)
 
     def forward(self,
                 hidden_states,
@@ -102,7 +103,7 @@ class EfficientNetAdapterEncoding(encoder_class):
         if not return_dict:
              return tuple(v for v in [hidden_states, all_hidden_states] if v is not None)
         
-            
+        assert hidden_states is not None
         return BaseModelOutputWithNoAttention(
             last_hidden_state=hidden_states,
             hidden_states=all_hidden_states,
