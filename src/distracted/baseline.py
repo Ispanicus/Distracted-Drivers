@@ -11,14 +11,24 @@ from torchvision import transforms
 from torch.optim.lr_scheduler import StepLR
 from distracted.data_util import DATA_PATH, get_train_df, H, W, C, Tensor
 from distracted.dataset_loader import DriverDataset
+from distracted.adapters import get_adapter_model
 from transformers import EfficientNetForImageClassification, EfficientNetImageProcessor
 import mlflow
 from mlflow import log_metric, log_metrics, log_params, log_artifacts, set_tracking_uri, set_experiment
 
-B = BATCH_SIZE = 128 # 128 For 12GB VRAM
 
-#MODEL_NAME = "google/efficientnet-b0"
-MODEL_NAME = "google/efficientnet-b3"
+B = BATCH_SIZE = 64 # 128 For 12GB VRAM
+
+MODEL_NAME = "google/efficientnet-b0"
+# MODEL_NAME = "google/efficientnet-b3"
+MODEL_NAME_SUFFIX = MODEL_NAME[-2:]
+USE_ADAPTER = True
+ADAPTERS=[(3,7)]
+LR = 2
+GAMMA = 1
+EPOCHS = 10
+torch.manual_seed(42)
+
 
 preprocessor = EfficientNetImageProcessor.from_pretrained(MODEL_NAME)
 
@@ -86,11 +96,8 @@ def permute(x: Tensor[H, W, C]) -> Tensor:
 
 
 def main():
-    torch.manual_seed(42)
 
-    LR = 1
-    GAMMA = 0.95
-    EPOCHS = 10
+    
     device = torch.device("cuda")
 
     data_kwargs = {
@@ -114,7 +121,10 @@ def main():
                       ), **data_kwargs
     )
 
-    model = EfficientNetForImageClassification.from_pretrained(MODEL_NAME)
+    if USE_ADAPTER:
+        model = get_adapter_model(MODEL_NAME_SUFFIX, adapter_locations=ADAPTERS)
+    else:
+        model = EfficientNetForImageClassification.from_pretrained(MODEL_NAME)
 
     # Set requires_grad to False for all layers except the last two blocks
     for param in model.parameters():
@@ -127,7 +137,7 @@ def main():
     for param in model.classifier.parameters():
         param.requires_grad = True
     for name, param in model.named_parameters():
-        if 'top' in name:
+        if 'top' in name or "adapters" in name:
             param.requires_grad = True
 
     model.to(device)

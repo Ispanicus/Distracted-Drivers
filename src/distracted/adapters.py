@@ -1,9 +1,11 @@
+from typing import Optional, Tuple
+from attr import dataclass
 from transformers import EfficientNetForImageClassification
 import math
 from torch import nn
 import torch
-
-# Hack to get encoder class from transformer library
+from transformers.modeling_outputs import ModelOutput
+#   Hack to get encoder class from transformer library
 model = EfficientNetForImageClassification.from_pretrained("google/efficientnet-b0")
 encoder_instance = model.efficientnet.encoder
 encoder_class = encoder_instance.__class__
@@ -26,6 +28,14 @@ def round_filters(config, num_channels: int):
 
     return int(new_dim)
 
+@dataclass
+class BaseModelOutputWithNoAttention(ModelOutput):
+
+    last_hidden_state: torch.FloatTensor = None
+    hidden_states: Optional[Tuple[torch.FloatTensor]] = None
+
+
+# See modeling_efficientnet.py for original class
 class EfficientNetAdapterEncoding(encoder_class):
     def __init__(self,config,model,adapter_idxs,adapter_base_block_idx):
         encoder_instance = model.efficientnet.encoder
@@ -38,7 +48,7 @@ class EfficientNetAdapterEncoding(encoder_class):
         self.top_activation = encoder_instance.top_activation
         self.adapter_idxs = adapter_idxs # idx of block before adapter
         self.adapter_base_block_idx = adapter_base_block_idx # base block idx before adapter
-
+        self.gradient_checkpointing = False # Unsure if this correctly sets gradient_checkpointing which seems to be defualt false for EncoderBlocks
         
         adapters = []
 
@@ -48,7 +58,8 @@ class EfficientNetAdapterEncoding(encoder_class):
         for i in range(num_base_blocks):
             block_out_dim = round_filters(config,config.out_channels[i])
             block_in_dim = round_filters(config,config.in_channels[i]) 
-            for _ in range(round_repeats(config.num_block_repeats[i],config.depth_coefficient)):
+            for j in range(round_repeats(config.num_block_repeats[i],config.depth_coefficient)):
+                block_in_dim = block_out_dim if j > 0 else block_in_dim
                 block_dimensions.append((block_in_dim,block_out_dim))
         
         for idx,base_idx in zip(self.adapter_idxs,self.adapter_base_block_idx):
@@ -67,11 +78,6 @@ class EfficientNetAdapterEncoding(encoder_class):
             adapters.append(adapter)
         self.adapters=nn.ModuleList(adapters)
 
-
-
-       
-
-
     def forward(self,
                 hidden_states,
                 output_hidden_states = False,
@@ -79,25 +85,29 @@ class EfficientNetAdapterEncoding(encoder_class):
 
 
         all_hidden_states = (hidden_states,) if output_hidden_states else None
-        # adapters = iter(self.adapters)
+        adapters = iter(self.adapters)
         for idx, block in enumerate(self.blocks):
             hidden_states = block(hidden_states)
             if output_hidden_states:
                  all_hidden_states += (hidden_states,)
             if idx in self.adapter_idxs:
-                adapter = next(self.adapters)
+                adapter = next(adapters)
                 hidden_states = adapter(hidden_states)
                 if output_hidden_states:
                     all_hidden_states += (hidden_states,)
 
-        if not return_dict:
-             return tuple(v for v in [hidden_states, all_hidden_states] if v is not None)
         hidden_states = self.top_conv(hidden_states)
         hidden_states = self.top_bn(hidden_states)
         hidden_states = self.top_activation(hidden_states)
+        if not return_dict:
+             return tuple(v for v in [hidden_states, all_hidden_states] if v is not None)
+        
             
-        return (hidden_states,all_hidden_states) # Should work as forward pass just takes encoder_output[0]
-    
+        return BaseModelOutputWithNoAttention(
+            last_hidden_state=hidden_states,
+            hidden_states=all_hidden_states,
+        )
+
 
 def get_adapter_model(
           base_model_suffix: str, # ex: b0
