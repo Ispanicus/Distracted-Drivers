@@ -15,7 +15,7 @@ from transformers import EfficientNetForImageClassification, EfficientNetImagePr
 import mlflow
 from mlflow import log_metric, log_metrics, log_params, log_artifacts, set_tracking_uri, set_experiment
 
-B = BATCH_SIZE = 128 # 128 For 12GB VRAM
+B = BATCH_SIZE = 32 # 128 For 12GB VRAM
 
 preprocessor = EfficientNetImageProcessor.from_pretrained('google/efficientnet-b0')
 
@@ -85,9 +85,9 @@ def permute(x: Tensor[H, W, C]) -> Tensor:
 def main():
     torch.manual_seed(42)
 
-    LR = 2
-    GAMMA = 0.95
-    EPOCHS = 10
+    LR = 0.0001
+    GAMMA = 1
+    EPOCHS = 50
     device = torch.device("cuda")
 
     data_kwargs = {
@@ -114,22 +114,28 @@ def main():
     model = EfficientNetForImageClassification.from_pretrained('google/efficientnet-b0')
 
     # Set requires_grad to False for all layers except the last two blocks
-    for param in model.parameters():
-        param.requires_grad = False
+    #for param in model.parameters():
+    #    param.requires_grad = False
 
     config = model.config
     num_classes = 10
     model.classifier = nn.Linear(config.hidden_dim, num_classes)
 
-    for param in model.classifier.parameters():
-        param.requires_grad = True
-    for name, param in model.named_parameters():
-        if 'top' in name:
-            param.requires_grad = True
+    #for param in model.classifier.parameters():
+    #    param.requires_grad = True
+    #for name, param in model.named_parameters():
+    #    if 'top' in name:
+    #        param.requires_grad = True
 
     model.to(device)
 
-    optimizer = optim.Adadelta(model.parameters(), lr=LR, )#rho=0, eps=0, weight_decay=0)
+    
+    optimizer_grouped_parameters = [
+        {'params': [p for n, p in model.named_parameters() if 'top' in n], 'lr': 0.01, 'weight_decay': 0.01},
+        {'params': [p for n, p in model.named_parameters() if 'top' not in n], 'lr': 0.0001, 'weight_decay': 0.0}
+    ]
+
+    optimizer = optim.Adadelta(optimizer_grouped_parameters)#rho=0, eps=0)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=GAMMA)
 
@@ -140,7 +146,7 @@ def main():
         artifact_path = "model"
         state_dict = model.state_dict()
 
-        log_params({"lr": LR, "gamma": GAMMA, "epochs": EPOCHS, "batch_size": BATCH_SIZE})
+        log_params({"lr": LR, "gamma": GAMMA, "epochs": EPOCHS, 'batch_size': BATCH_SIZE})
 
         for epoch in range(1, EPOCHS + 1):
             train(model, device, train_loader, optimizer, epoch, log_interval=10)
