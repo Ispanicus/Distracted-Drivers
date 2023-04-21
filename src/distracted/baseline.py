@@ -17,7 +17,10 @@ from mlflow import log_metric, log_metrics, log_params, log_artifacts, set_track
 
 B = BATCH_SIZE = 128 # 128 For 12GB VRAM
 
-preprocessor = EfficientNetImageProcessor.from_pretrained('google/efficientnet-b0')
+#MODEL_NAME = "google/efficientnet-b0"
+MODEL_NAME = "google/efficientnet-b3"
+
+preprocessor = EfficientNetImageProcessor.from_pretrained(MODEL_NAME)
 
 torch.backends.cudnn.benchmark = True
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -85,7 +88,7 @@ def permute(x: Tensor[H, W, C]) -> Tensor:
 def main():
     torch.manual_seed(42)
 
-    LR = 2
+    LR = 1
     GAMMA = 0.95
     EPOCHS = 10
     device = torch.device("cuda")
@@ -111,7 +114,7 @@ def main():
                       ), **data_kwargs
     )
 
-    model = EfficientNetForImageClassification.from_pretrained('google/efficientnet-b0')
+    model = EfficientNetForImageClassification.from_pretrained(MODEL_NAME)
 
     # Set requires_grad to False for all layers except the last two blocks
     for param in model.parameters():
@@ -140,7 +143,7 @@ def main():
         artifact_path = "model"
         state_dict = model.state_dict()
 
-        log_params({"lr": LR, "gamma": GAMMA, "epochs": EPOCHS, "batch_size": BATCH_SIZE})
+        log_params({"lr": LR, "gamma": GAMMA, "epochs": EPOCHS, "batch_size": BATCH_SIZE, "model_name": MODEL_NAME})
 
         for epoch in range(1, EPOCHS + 1):
             train(model, device, train_loader, optimizer, epoch, log_interval=10)
