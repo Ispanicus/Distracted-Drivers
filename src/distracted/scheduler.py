@@ -11,7 +11,8 @@ def task(**kwargs):
     for key, value in kwargs.items():
         cmd.append(key_to_arg[key])
         cmd.append(str(value))
-    return kwargs
+    result = subprocess.run(cmd, capture_output=True)
+    return result
     
 
 results = dict()
