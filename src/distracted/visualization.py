@@ -19,7 +19,7 @@ model = mlflow.pytorch.load_model(model_uri='file://D:\Github\Distracted-Drivers
 to_input = Compose([Resize((224, 224)), ToTensor()])
 images = []
 for i in range(10):
-    images.append([to_input(Image.open(file)) for file in list(DATA_PATH.glob(f'imgs/train/c{i}/img_*.jpg'))[:2]])
+    images.extend([to_input(Image.open(file)) for file in list(DATA_PATH.glob(f'imgs/train/c{i}/img_*.jpg'))[:2]])
 
 # call mirror with the inputs and the model
 mirror(images, model, visualisations=[BackProp, GradCam])
