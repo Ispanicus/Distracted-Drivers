@@ -36,7 +36,7 @@ class BaseModelOutputWithNoAttention(ModelOutput):
 
 
 class EfficientNetAdapterEncoding(EfficientNetEncoder):
-    def __init__(self, config, model, adapter_idxs, adapter_base_block_idx):
+    def __init__(self, config, model, adapter_base_block_idx):
         encoder_instance = model.efficientnet.encoder
         self.config = model.config
         super().__init__(self.config)
@@ -45,7 +45,7 @@ class EfficientNetAdapterEncoding(EfficientNetEncoder):
         self.top_conv = encoder_instance.top_conv
         self.top_bn = encoder_instance.top_bn
         self.top_activation = encoder_instance.top_activation
-        self.adapter_idxs = adapter_idxs  # idx of block before adapter
+        self.adapter_idxs = [] # idx of block before adapter
         self.adapter_base_block_idx = (
             adapter_base_block_idx  # base block idx before adapter
         )
@@ -56,6 +56,7 @@ class EfficientNetAdapterEncoding(EfficientNetEncoder):
         block_class = self.blocks[0].__class__
         num_base_blocks = len(config.in_channels)
         block_dimensions = []
+        block_idx = 0
         for i in range(num_base_blocks):
             block_out_dim = round_filters(config, config.out_channels[i])
             block_in_dim = round_filters(config, config.in_channels[i])
@@ -64,6 +65,9 @@ class EfficientNetAdapterEncoding(EfficientNetEncoder):
             ):
                 block_in_dim = block_out_dim if j > 0 else block_in_dim
                 block_dimensions.append((block_in_dim, block_out_dim))
+                block_idx += 1
+            if i in self.adapter_base_block_idx:
+                self.adapter_idxs.append(block_idx-1)
 
         for idx, base_idx in zip(self.adapter_idxs, self.adapter_base_block_idx):
             adapter_dimension = block_dimensions[idx]
@@ -113,14 +117,14 @@ class EfficientNetAdapterEncoding(EfficientNetEncoder):
 
 def get_adapter_model(
     model_name: str,  # ex: "google/efficientnet-b3"
-    adapter_locations: list[tuple],  # list of (base_block_idx,adapter_block_idx)
+    adapter_locations: list[int],  # list of (base_block_idx,adapter_block_idx)
 ):
-    adapter_idxs = [adapter_block_idx for _, adapter_block_idx in adapter_locations]
-    adapter_base_block_idx = [base_block_idx for base_block_idx, _ in adapter_locations]
+    adapter_locations.sort()
+    adapter_base_block_idx = adapter_locations
     model = EfficientNetForImageClassification.from_pretrained(model_name)
     config = model.config
     adapter_encoding = EfficientNetAdapterEncoding(
-        config, model, adapter_idxs, adapter_base_block_idx
+        config, model, adapter_base_block_idx
     )
     model.efficientnet.encoder = adapter_encoding
     return model
