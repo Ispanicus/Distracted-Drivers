@@ -27,11 +27,11 @@ torch.backends.cuda.matmul.allow_tf32 = True
 @click.option("--batch-size", default=128)
 @click.option("--model-name", default="google/efficientnet-b3")
 @click.option("--adapters", default=str([3]))
-@click.option("--top-lr", default=2)
-@click.option("--top-decay", default=0)
-@click.option("--body-lr", default=0)
-@click.option("--body-decay", default=0)
-@click.option("--gamma", default=1)
+@click.option("--top-lr", default=2.0)
+@click.option("--top-decay", default=0.0)
+@click.option("--body-lr", default=0.0)
+@click.option("--body-decay", default=0.0)
+@click.option("--gamma", default=1.0)
 @click.option("--epochs", default=10)
 def init_cli(
     batch_size,
