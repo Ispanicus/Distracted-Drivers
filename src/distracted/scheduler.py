@@ -15,7 +15,7 @@ def task(**kwargs):
     cmd = [classify_path]
     for key, value in kwargs.items():
         cmd.append(key)
-        cmd.append(value)
+        cmd.append(str(value))
     result = subprocess.Popen([venv_python_path] + cmd,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE)
