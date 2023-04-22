@@ -3,6 +3,7 @@ from distracted.experimental_setups import (
     ExperimentSetup,
     adapter_setup,
     finetune_setup,
+    segmentation_setup,
 )
 
 from torch.utils.data import DataLoader
@@ -10,7 +11,7 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
-from distracted.data_util import DATA_PATH
+from distracted.data_util import DATA_PATH, timeit
 from distracted.dataset_loader import DriverDataset
 import mlflow
 from mlflow import log_metric, log_params
@@ -25,7 +26,7 @@ torch.backends.cuda.matmul.allow_tf32 = True
 @click.command()
 @click.option("--batch-size", default=128)
 @click.option("--model-name", default="google/efficientnet-b3")
-@click.option("--adapters", default=str([(3, 7)]))
+@click.option("--adapters", default=str([3]))
 @click.option("--top-lr", default=2)
 @click.option("--top-decay", default=0)
 @click.option("--body-lr", default=0)
@@ -56,8 +57,10 @@ def init_cli(
 
     if adapters:
         setup = adapter_setup(**common_params, adapters=adapters)
-    else:
+    elif body_lr:
         setup = finetune_setup(**common_params, body_lr=body_lr, body_decay=body_decay)
+    else:
+        setup = segmentation_setup(**common_params)
 
     main(setup)
 
@@ -116,7 +119,7 @@ def test(model, device, test_loader, epoch):
         )
     )
     log_metric("val accuracy", correct / len(test_loader.dataset))
-    return test_loss, model.state_dict(), model
+    return test_loss
 
 
 def get_optimiser_params(model, top_lr, top_decay, body_lr=0, body_decay=0, **_):
