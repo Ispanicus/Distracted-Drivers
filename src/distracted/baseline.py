@@ -15,7 +15,29 @@ from mlflow import log_metric, log_params
 import click
 
 
+<<<<<<< HEAD
 torch.manual_seed(42)
+=======
+B = BATCH_SIZE = 32 # 128 For 12GB VRAM
+
+#MODEL_NAME = "google/efficientnet-b0"
+MODEL_NAME = "google/efficientnet-b3"
+MODEL_NAME_SUFFIX = MODEL_NAME[-2:]
+USE_ADAPTER = True
+MODEL_NAME_MLFOW = MODEL_NAME + "_adapter" if USE_ADAPTER else MODEL_NAME
+ADAPTERS=[(3,7)]
+LR = 2
+GAMMA = 1
+EPOCHS = 10
+global best_test_loss
+best_test_loss = 9999
+global sd
+global m
+torch.manual_seed(42)
+
+preprocessor = EfficientNetImageProcessor.from_pretrained(MODEL_NAME)
+
+>>>>>>> a7309608c981626ab1b8e9d2fac7dac703ad58bd
 torch.backends.cudnn.benchmark = True
 torch.backends.cuda.matmul.allow_tf32 = True
 
