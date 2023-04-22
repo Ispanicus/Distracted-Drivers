@@ -75,16 +75,3 @@ def save_onehot(path: Path, onehot: Tensor[H, W, C]):
 
 def load_onehot(path: Path) -> Tensor[H, W, C]:
     return torch.from_numpy(np.load(path)["data"]).to(torch.float32)
-
-
-class Hyperparameters(BaseModel):
-    batch_size: int
-    model_name: str
-    adapters: list[int]
-    top_lr: float
-    top_decay: float
-    body_lr: float
-    body_decay: float
-    gamma: float
-    epochs: int
-
