@@ -28,11 +28,11 @@ ADAPTERS=[(3,7)]
 LR = 2
 GAMMA = 1
 EPOCHS = 10
+global best_test_loss
 best_test_loss = 9999
-sd = ""
-m = ""
+global sd
+global m
 torch.manual_seed(42)
-
 
 preprocessor = EfficientNetImageProcessor.from_pretrained(MODEL_NAME)
 
