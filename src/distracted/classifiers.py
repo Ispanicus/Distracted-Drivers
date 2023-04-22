@@ -53,7 +53,6 @@ def init_cli(batch_size, model_name, adapters, lr, gamma, epochs):
 def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
-        len_data = len(data)
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)

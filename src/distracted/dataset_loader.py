@@ -168,16 +168,5 @@ def img_example():
 
 
 if __name__ == "__main__":
-    # segment_example()
-    # img_example()
-
-    train_loader = DataLoader(
-        DriverDataset(
-            "train",
-            returns=["segment", "torch_image", "label"],
-            transform=transform,
-        ),
-        num_workers=2,
-    )
-    with timeit("One batch"):
-        seg_img, label = next(iter(train_loader))
+    segment_example()
+    img_example()
