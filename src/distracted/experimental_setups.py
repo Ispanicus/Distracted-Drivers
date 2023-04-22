@@ -17,8 +17,7 @@ class ExperimentSetup(typing.NamedTuple):
 
     model: nn.Module  # Accepts a batch of data and spits out class probabilities
     model_name: str  # Name of model
-    dataloader_returns: list[str]  # E.g. ["segment", "torch_image", "label"]
-    transform: callable  # Applied in dataloader before data is fed to model
+    dataset_kwargs: dict[str, any]
     params: dict  # Hyperparameters
 
 

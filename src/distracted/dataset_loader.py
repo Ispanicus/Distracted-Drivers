@@ -72,8 +72,6 @@ def dataset_loader():
 
 
 class DriverDataset(Dataset):
-    _gigacache = []
-
     def __init__(
         self,
         split: Literal["train"] | Literal["dev"] | Literal["test"],
@@ -93,15 +91,18 @@ class DriverDataset(Dataset):
         if fuck_your_ram and not i_know_what_im_about_to_do:
             # memory *= n_processes
             self.naughty_boi = lambda: ...  # Crashes if multiprocessing
-
-        self._gigacache = [
-            self[i] for i in range(len(self)) if i < fuck_your_ram
-        ]  # range(len(self)) is important for performance: __iter__ == __bad__
+        self.fuck_your_ram = fuck_your_ram
 
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, idx):
+        if getattr(self, "_gigacache", None) is None:
+            self._gigacache = []  # avoid infinite loop
+            self._gigacache = [
+                self[i] for i in range(min(len(self), self.fuck_your_ram))
+            ]  # self[i] is important: __iter__ == __bad__
+
         if idx < len(self._gigacache):
             return self._gigacache[idx]
 

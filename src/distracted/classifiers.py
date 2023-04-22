@@ -140,7 +140,7 @@ def main(setup: ExperimentSetup):
     data_kwargs = {
         # "num_workers": 4,
         # "pin_memory": True,
-        "shuffle": True,
+        "shuffle": True,  # Only done once for entire run
         "batch_size": setup.params["batch_size"],
         "drop_last": True,  # Drop last batch if it's not full
     }
