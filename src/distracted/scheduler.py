@@ -50,9 +50,10 @@ def main():
                     errors.append(stderr.decode("utf-8"))
                     print(stderr.decode("utf-8"))
     print("Finished ThreadPoolExecutor")
-    print("Errors detected!")
-    for error in errors:
-        print(error)
+    if errors: 
+        print("Errors detected!")
+        for error in errors:
+            print(error)
 
 
 if __name__ == "__main__":
