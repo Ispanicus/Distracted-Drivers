@@ -34,15 +34,15 @@ torch.backends.cuda.matmul.allow_tf32 = True
 @click.option("--gamma", default=1.0, type=float)
 @click.option("--epochs", default=10)
 def init_cli(
-    batch_size,
-    model_name,
-    adapters,
-    top_lr,
-    top_decay,
-    body_lr,
-    body_decay,
-    gamma,
-    epochs,
+    batch_size=128,
+    model_name="google/efficientnet-b3",
+    adapters=str([3]),
+    top_lr=2.0,
+    top_decay=0.0,
+    body_lr=0.0,
+    body_decay=0.0,
+    gamma=1.0,
+    epochs=10,
 ):
     adapters = eval(adapters)
 
@@ -67,14 +67,15 @@ def init_cli(
 
 def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
     model.train()
+    train_loss = 0
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
         loss = F.cross_entropy(output.logits, target)
         loss.backward()
+        train_loss += loss
         optimizer.step()
-        log_metric("train loss", loss.item(), batch_idx + len(train_loader) * epoch)
         if batch_idx % log_interval == 0:
             print(
                 "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
@@ -82,44 +83,29 @@ def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
                     batch_idx * len(data),
                     len(train_loader.dataset),
                     100.0 * batch_idx / len(train_loader),
-                    loss.item(),
+                    loss,
                 )
             )
+    return train_loss / len(train_loader)
 
 
 def test(model, device, test_loader, epoch):
     model.eval()
     test_loss = 0
-    correct = 0
+    # correct = 0
     with torch.no_grad():
-        for batch_idx, (data, target) in enumerate(test_loader):
+        for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
-            log_metric(
-                "val loss",
-                F.cross_entropy(output.logits, target).item(),
-                batch_idx + len(test_loader) * epoch,
-            )
-            test_loss += F.cross_entropy(
-                output.logits, target, reduction="sum"
-            ).item()  # sum up batch loss
-            pred = output.logits.argmax(
-                dim=1, keepdim=True
-            )  # get the index of the max log-probability
-            correct += pred.eq(target.view_as(pred)).sum().item()
+            test_loss += F.cross_entropy(output.logits, target)
+            # pred = output.logits.argmax(
+            #     dim=1, keepdim=True
+            # )  # get the index of the max log-probability
+            # correct += pred.eq(target.view_as(pred)).sum().item()
 
-    test_loss /= len(test_loader.dataset)
-
-    print(
-        "\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n".format(
-            test_loss,
-            correct,
-            len(test_loader.dataset),
-            100.0 * correct / len(test_loader.dataset),
-        )
-    )
-    log_metric("val accuracy", correct / len(test_loader.dataset))
-    return test_loss
+    print(f"\nTest set Epoch {epoch}: Average loss: {test_loss:.4f}\n")
+    # log_metric("val accuracy", correct / len(test_loader.dataset))
+    return test_loss / len(test_loader)
 
 
 def get_optimiser_params(model, top_lr, top_decay, body_lr=0, body_decay=0, **_):
@@ -165,13 +151,22 @@ def main(setup: ExperimentSetup):
     with mlflow.start_run():
         log_params(setup.params)
 
-        for epoch in range(1, setup.params["epochs"] + 1):
-            train(model, device, train_loader, optimizer, epoch, log_interval=10)
-            if (test_loss := test(model, device, dev_loader, epoch)) < best_test_loss:
-                best_test_loss = test_loss
-                state = model.state_dict()
+        for epoch in range(1, 2):  # setup.params["epochs"] + 1):
+            with timeit("train"):
+                train_loss = train(
+                    model, device, train_loader, optimizer, epoch, log_interval=10
+                )
+            with timeit("test"):
+                if (
+                    test_loss := test(model, device, dev_loader, epoch)
+                ) < best_test_loss:
+                    best_test_loss = test_loss
+                    state = model.state_dict()
 
             scheduler.step()
+
+            log_metric("train loss", train_loss)
+            log_metric("val loss", test_loss)
 
         mlflow.pytorch.log_state_dict(state, "model")
         mlflow.pytorch.log_model(model, "model")
