@@ -4,3 +4,4 @@
 /venv
 johan*.ipynb
 dataset.obj
+*.job
