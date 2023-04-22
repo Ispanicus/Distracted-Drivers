@@ -77,7 +77,6 @@ def load_onehot(path: Path) -> Tensor[H, W, C]:
     return torch.from_numpy(np.load(path)["data"]).to(torch.float32)
 
 
-
 class Hyperparameters(BaseModel):
     batch_size: int = 128
     learning_rate: float = 2.0
@@ -85,4 +84,3 @@ class Hyperparameters(BaseModel):
     model_name: str
     adapters: list[int] = []
     gamma: float = 1.0
-    
