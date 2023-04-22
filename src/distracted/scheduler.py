@@ -2,6 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 import concurrent.futures
 import json
 from distracted.data_util import Hyperparameters
+import subprocess
 
 MAX_WORKERS=8
 
