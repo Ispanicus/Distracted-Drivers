@@ -1,15 +1,15 @@
 {
     "finetune_1":
         {
-            "--adapters":[]
+            "--adapters":"[]"
         },
     "adapter_1":
         {
-            "--adapters":[3]
+            "--adapters":"[3]"
         },
     "finetune_body":
         {
-            "--adapters":[],
+            "--adapters":"[]",
             "--body-lr": 0.0001
         }
 }
