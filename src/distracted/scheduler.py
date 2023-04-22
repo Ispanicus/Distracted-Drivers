@@ -8,11 +8,10 @@ from pathlib import Path
 MAX_WORKERS = 8
 
 classify_path = str((Path(__file__).parent / "classifiers.py").absolute())
-classify_path
 
 
 def task(**kwargs):
-    cmd = ["python", full_path]
+    cmd = ["python", classify_path]
     for key, value in kwargs.items():
         cmd.append(key)
         cmd.append(str(value))
@@ -27,6 +26,7 @@ def main():
         hyperparameters = json.load(f)
 
     print("starting ThreadPoolExecutor")
+    errors = []
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         future_dict = {
             executor.submit(task, **kwargs): {run_slug: kwargs}
@@ -42,7 +42,12 @@ def main():
                 print(f"{run_slug} generated an exceptions: {exc} ")
             else:
                 results[run_slug] = {run_slug: {"results": data, "kwargs": kwargs}}
+                if data.returncode != 0:
+                    errors.append(data.stderr.decode("utf-8"))
     print("Finished ThreadPoolExecutor")
+    print("Errors detected!")
+    for error in errors:
+        print(error)
 
 
 if __name__ == "__main__":
