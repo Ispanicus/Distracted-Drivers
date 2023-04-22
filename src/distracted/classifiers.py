@@ -26,26 +26,38 @@ torch.backends.cuda.matmul.allow_tf32 = True
 @click.option("--batch-size", default=128)
 @click.option("--model-name", default="google/efficientnet-b3")
 @click.option("--adapters", default=str([(3, 7)]))
-@click.option("--lr", default=2)
+@click.option("--top-lr", default=2)
+@click.option("--top-decay", default=0)
+@click.option("--body-lr", default=0)
+@click.option("--body-decay", default=0)
 @click.option("--gamma", default=1)
 @click.option("--epochs", default=10)
-def init_cli(batch_size, model_name, adapters, lr, gamma, epochs):
-    global BATCH_SIZE, MODEL_NAME, ADAPTERS, LR, GAMMA, EPOCHS, best_test_loss
-    BATCH_SIZE, MODEL_NAME, ADAPTERS, LR, GAMMA, EPOCHS = (
-        batch_size,
-        model_name,
-        adapters,
-        lr,
-        gamma,
-        epochs,
-    )
-    ADAPTERS = eval(ADAPTERS)
-    best_test_loss = 9999
+def init_cli(
+    batch_size,
+    model_name,
+    adapters,
+    top_lr,
+    top_decay,
+    body_lr,
+    body_decay,
+    gamma,
+    epochs,
+):
+    adapters = eval(adapters)
 
-    if ADAPTERS:
-        setup = adapter_setup(ADAPTERS)
+    common_params = dict(
+        batch_size=batch_size,
+        model_name=model_name,
+        top_lr=top_lr,
+        top_decay=top_decay,
+        gamma=gamma,
+        epochs=epochs,
+    )
+
+    if adapters:
+        setup = adapter_setup(**common_params, adapters=adapters)
     else:
-        setup = finetune_setup()
+        setup = finetune_setup(**common_params, body_lr=body_lr, body_decay=body_decay)
 
     main(setup)
 
@@ -73,7 +85,6 @@ def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
 
 
 def test(model, device, test_loader, epoch):
-    global best_test_loss
     model.eval()
     test_loss = 0
     correct = 0
@@ -105,14 +116,19 @@ def test(model, device, test_loader, epoch):
         )
     )
     log_metric("val accuracy", correct / len(test_loader.dataset))
+    return test_loss, model.state_dict(), model
 
-    if test_loss < best_test_loss:
-        best_test_loss = test_loss
-        sd = model.state_dict()
-        m = model
-    if epoch == EPOCHS:
-        mlflow.pytorch.log_state_dict(sd, "model")
-        mlflow.pytorch.log_model(m, "model")
+
+def get_optimiser_params(model, top_lr, top_decay, body_lr=0, body_decay=0, **_):
+    top_params, body_params = [], []
+    for n, p in model.named_parameters():
+        params = top_params if "top" in n or "classifier" in n else body_params
+        params.append(p)
+
+    return [
+        {"params": top_params, "lr": top_lr, "weight_decay": top_decay},
+        {"params": body_params, "lr": body_lr, "weight_decay": body_decay},
+    ]
 
 
 def main(setup: ExperimentSetup):
@@ -122,7 +138,7 @@ def main(setup: ExperimentSetup):
         "num_workers": 4,
         "pin_memory": True,
         "shuffle": True,
-        "batch_size": BATCH_SIZE,
+        "batch_size": setup.params["batch_size"],
         "drop_last": True,  # Drop last batch if it's not full
     }
 
@@ -138,32 +154,26 @@ def main(setup: ExperimentSetup):
 
     model = setup.model.to(device)
 
-    optimizer = optim.Adadelta(
-        model.parameters(),
-        lr=LR,
-    )  # rho=0, eps=0, weight_decay=0)
+    optimizer = optim.Adadelta(get_optimiser_params(model, **setup.params))
 
-    scheduler = StepLR(optimizer, step_size=1, gamma=GAMMA)
+    scheduler = StepLR(optimizer, step_size=1, gamma=setup.params["gamma"])
 
     mlflow.set_tracking_uri(uri=f"file://{DATA_PATH}\mlruns")
 
+    best_test_loss = 999
     with mlflow.start_run():
-        log_params(
-            {
-                "lr": LR,
-                "gamma": GAMMA,
-                "epochs": EPOCHS,
-                "batch_size": BATCH_SIZE,
-                "model_name": setup.model_name,
-                "adapters": ADAPTERS,
-            }
-        )
+        log_params(setup.params)
 
-        for epoch in range(1, EPOCHS + 1):
+        for epoch in range(1, setup.params["epochs"] + 1):
             train(model, device, train_loader, optimizer, epoch, log_interval=10)
-            test(model, device, dev_loader, epoch)
+            if (test_loss := test(model, device, dev_loader, epoch)) < best_test_loss:
+                best_test_loss = test_loss
+                state = model.state_dict()
 
             scheduler.step()
+
+        mlflow.pytorch.log_state_dict(state, "model")
+        mlflow.pytorch.log_model(model, "model")
 
 
 if __name__ == "__main__":

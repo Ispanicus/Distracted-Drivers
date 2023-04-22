@@ -19,6 +19,7 @@ class ExperimentSetup(typing.NamedTuple):
     model_name: str  # Name of model
     dataloader_returns: list[str]  # E.g. ["segment", "torch_image", "label"]
     transform: callable  # Applied in dataloader before data is fed to model
+    params: dict  # Hyperparameters
 
 
 def preprocess_img(
@@ -31,8 +32,9 @@ def preprocess_img(
     return [preprocessed_data, label]
 
 
-def adapter_setup(ADAPTERS: list[tuple[int, int]]) -> ExperimentSetup:
-    model = get_adapter_model(MODEL_NAME, adapter_locations=ADAPTERS)
+def adapter_setup(**params) -> ExperimentSetup:
+    adapters = params["adapters"]
+    model = get_adapter_model(MODEL_NAME, adapter_locations=adapters)
 
     num_classes = 10
     model.classifier = nn.Linear(model.config.hidden_dim, num_classes)
@@ -46,10 +48,11 @@ def adapter_setup(ADAPTERS: list[tuple[int, int]]) -> ExperimentSetup:
         model_name=f"{MODEL_NAME}_adapter",
         dataloader_returns=["torch_image", "label"],
         transform=preprocess_img,
+        params=params,
     )
 
 
-def finetune_setup() -> ExperimentSetup:
+def finetune_setup(**params) -> ExperimentSetup:
     """TODO: Finetune entire model, not just last layer"""
     model = EfficientNetForImageClassification.from_pretrained(MODEL_NAME)
 
@@ -65,6 +68,7 @@ def finetune_setup() -> ExperimentSetup:
         model_name=f"{MODEL_NAME}_finetune",
         dataloader_returns=["torch_image", "label"],
         transform=preprocess_img,
+        params=params,
     )
 
 
