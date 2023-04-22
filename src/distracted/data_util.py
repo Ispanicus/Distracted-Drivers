@@ -3,6 +3,7 @@ import numpy as np
 from time import perf_counter
 from contextlib import contextmanager
 import datetime as dt
+from pydantic import BaseModel
 
 
 import pandas as pd
@@ -74,3 +75,14 @@ def save_onehot(path: Path, onehot: Tensor[H, W, C]):
 
 def load_onehot(path: Path) -> Tensor[H, W, C]:
     return torch.from_numpy(np.load(path)["data"]).to(torch.float32)
+
+
+
+class Hyperparameters(BaseModel):
+    batch_size: int = 128
+    learning_rate: float = 2.0
+    epochs: int = 10
+    model_name: str
+    adapters: list[tuple(int,int)] = []
+    gamma: float = 1.0
+    
