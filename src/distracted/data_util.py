@@ -1,4 +1,9 @@
 from pathlib import Path
+import numpy as np
+from time import perf_counter
+from contextlib import contextmanager
+import datetime as dt
+
 
 import pandas as pd
 import torch
@@ -53,3 +58,19 @@ def get_train_df():
 
     df["img"] = [lambda row=row: Image.open(row.path) for row in df.itertuples()]
     return df
+
+
+@contextmanager
+def timeit(msg: str) -> float:
+    start = perf_counter()
+    start_date = f"{dt.datetime.now():%H:%M:%S}"
+    yield
+    print(f"{start_date} Time: {msg} {perf_counter() - start:.3f} seconds")
+
+
+def save_onehot(path: Path, onehot: Tensor[H, W, C]):
+    np.savez_compressed(path, data=onehot.to(bool).numpy())
+
+
+def load_onehot(path: Path) -> Tensor[H, W, C]:
+    return torch.from_numpy(np.load(path)["data"]).to(torch.float32)

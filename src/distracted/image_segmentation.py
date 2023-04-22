@@ -7,7 +7,16 @@ from PIL import Image
 from tqdm import tqdm
 from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
 
-from distracted.data_util import DATA_PATH, MASK_LABELS, C, H, Tensor, W, get_train_df
+from distracted.data_util import (
+    DATA_PATH,
+    MASK_LABELS,
+    C,
+    H,
+    Tensor,
+    W,
+    get_train_df,
+    save_onehot,
+)
 
 hv.extension("bokeh")
 
@@ -40,14 +49,6 @@ def main():
         onehot = segmentation_pipeline(img, model, processor)
 
         save_onehot(path, onehot)
-
-
-def save_onehot(path: Path, onehot: Tensor[H, W, C]):
-    np.savez_compressed(path, data=onehot.to(bool).numpy())
-
-
-def load_onehot(path: Path) -> Tensor[H, W, C]:
-    return torch.from_numpy(np.load(path)["data"]).to(torch.float32)
 
 
 def segmentation_pipeline(img: Image.Image, model, processor):

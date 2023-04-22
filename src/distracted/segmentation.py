@@ -20,18 +20,6 @@ B = BATCH_SIZE = 64  # 128 For 12GB VRAM
 torch.backends.cudnn.benchmark = True
 torch.backends.cuda.matmul.allow_tf32 = True
 
-from time import perf_counter
-from contextlib import contextmanager
-import datetime as dt
-
-
-@contextmanager
-def timeit(msg: str) -> float:
-    start = perf_counter()
-    start_date = f"{dt.datetime.now():%H:%M:%S}"
-    yield
-    print(f"{start_date} Time: {msg} {perf_counter() - start:.3f} seconds")
-
 
 class Net(nn.Module):
     def __init__(self):

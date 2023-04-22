@@ -1,15 +1,17 @@
 # https://github.com/pytorch/examples/blob/main/mnist/main.py
+from distracted.experimental_setups import (
+    ExperimentSetup,
+    adapter_setup,
+    finetune_setup,
+)
 
 from torch.utils.data import DataLoader
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
-from distracted.data_util import DATA_PATH, get_train_df, H, W, C, Tensor
+from distracted.data_util import DATA_PATH
 from distracted.dataset_loader import DriverDataset
-from distracted.adapters import get_adapter_model
-from transformers import EfficientNetForImageClassification, EfficientNetImageProcessor
 import mlflow
 from mlflow import log_metric, log_params
 import click
@@ -28,7 +30,7 @@ torch.backends.cuda.matmul.allow_tf32 = True
 @click.option("--gamma", default=1)
 @click.option("--epochs", default=10)
 def init_cli(batch_size, model_name, adapters, lr, gamma, epochs):
-    global BATCH_SIZE, MODEL_NAME, ADAPTERS, LR, GAMMA, EPOCHS, USE_ADAPTER, MODEL_NAME_SUFFIX, MODEL_NAME_MLFOW, preprocessor, best_test_loss
+    global BATCH_SIZE, MODEL_NAME, ADAPTERS, LR, GAMMA, EPOCHS, best_test_loss
     BATCH_SIZE, MODEL_NAME, ADAPTERS, LR, GAMMA, EPOCHS = (
         batch_size,
         model_name,
@@ -38,22 +40,23 @@ def init_cli(batch_size, model_name, adapters, lr, gamma, epochs):
         epochs,
     )
     ADAPTERS = eval(ADAPTERS)
-    USE_ADAPTER = bool(ADAPTERS)
-    MODEL_NAME_SUFFIX = MODEL_NAME[-2:]
-    MODEL_NAME_MLFOW = MODEL_NAME + "_adapter" if USE_ADAPTER else MODEL_NAME
     best_test_loss = 9999
-    preprocessor = EfficientNetImageProcessor.from_pretrained(MODEL_NAME)
-    main()
+
+    if ADAPTERS:
+        setup = adapter_setup(ADAPTERS)
+    else:
+        setup = finetune_setup()
+
+    main(setup)
 
 
 def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         len_data = len(data)
-        data = preprocessor(data, return_tensors="pt")
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
-        output = model(**data)
+        output = model(data)
         loss = F.cross_entropy(output.logits, target)
         loss.backward()
         optimizer.step()
@@ -62,7 +65,7 @@ def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
             print(
                 "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
                     epoch,
-                    batch_idx * len_data,
+                    batch_idx * len(data),
                     len(train_loader.dataset),
                     100.0 * batch_idx / len(train_loader),
                     loss.item(),
@@ -77,9 +80,8 @@ def test(model, device, test_loader, epoch):
     correct = 0
     with torch.no_grad():
         for batch_idx, (data, target) in enumerate(test_loader):
-            data = preprocessor.preprocess(data, return_tensors="pt")
             data, target = data.to(device), target.to(device)
-            output = model(**data)
+            output = model(data)
             log_metric(
                 "val loss",
                 F.cross_entropy(output.logits, target).item(),
@@ -114,7 +116,7 @@ def test(model, device, test_loader, epoch):
         mlflow.pytorch.log_model(m, "model")
 
 
-def main():
+def main(setup: ExperimentSetup):
     device = torch.device("cuda")
 
     data_kwargs = {
@@ -125,28 +127,17 @@ def main():
         "drop_last": True,  # Drop last batch if it's not full
     }
 
-    train_loader = DataLoader(
-        DriverDataset("train", returns=["torch_image", "label"]),
-        **data_kwargs,
-    )
+    train_loader, dev_loader = [
+        DataLoader(
+            DriverDataset(
+                split, returns=setup.dataloader_returns, transform=setup.transform
+            ),
+            **data_kwargs,
+        )
+        for split in ["train", "dev"]
+    ]
 
-    dev_loader = DataLoader(
-        DriverDataset("dev", returns=["torch_image", "label"]),
-        **data_kwargs,
-    )
-
-    if USE_ADAPTER:
-        model = get_adapter_model(MODEL_NAME_SUFFIX, adapter_locations=ADAPTERS)
-    else:
-        model = EfficientNetForImageClassification.from_pretrained(MODEL_NAME)
-
-    num_classes = 10
-    model.classifier = nn.Linear(model.config.hidden_dim, num_classes)
-    model.to(device)
-
-    for name, param in model.named_parameters():
-        grad: bool = any(label in name for label in ["classifier", "top", "adapters"])
-        param.requires_grad = grad
+    model = setup.model.to(device)
 
     optimizer = optim.Adadelta(
         model.parameters(),
@@ -164,7 +155,7 @@ def main():
                 "gamma": GAMMA,
                 "epochs": EPOCHS,
                 "batch_size": BATCH_SIZE,
-                "model_name": MODEL_NAME_MLFOW,
+                "model_name": setup.model_name,
                 "adapters": ADAPTERS,
             }
         )

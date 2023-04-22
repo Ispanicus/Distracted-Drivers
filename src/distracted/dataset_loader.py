@@ -1,14 +1,17 @@
-from lib2to3.pgen2.driver import Driver
-from distracted.data_util import DATA_PATH, get_train_df, H, W, C, Tensor
+from distracted.data_util import (
+    DATA_PATH,
+    get_train_df,
+    H,
+    W,
+    C,
+    timeit,
+    load_onehot,
+)
 import torchvision.io
-import functools
 from torch.utils.data import Dataset, DataLoader
-import torch
 import pandas as pd
 from datasets import load_dataset
-from PIL import Image
 from typing import Literal
-from pathlib import Path
 import pickle
 from transformers import EfficientNetImageProcessor
 
@@ -82,8 +85,6 @@ class DriverDataset(Dataset):
         return len(self.df)
 
     def __getitem__(self, idx):
-        from distracted.image_segmentation import load_onehot
-
         row = self.df.iloc[idx]
 
         if "torch_image" or "preprocessed_image" in self.returns:
@@ -167,5 +168,16 @@ def img_example():
 
 
 if __name__ == "__main__":
-    segment_example()
-    img_example()
+    # segment_example()
+    # img_example()
+
+    train_loader = DataLoader(
+        DriverDataset(
+            "train",
+            returns=["segment", "torch_image", "label"],
+            transform=transform,
+        ),
+        num_workers=2,
+    )
+    with timeit("One batch"):
+        seg_img, label = next(iter(train_loader))
