@@ -83,6 +83,6 @@ class Hyperparameters(BaseModel):
     learning_rate: float = 2.0
     epochs: int = 10
     model_name: str
-    adapters: list[tuple(int,int)] = []
+    adapters: list[int] = []
     gamma: float = 1.0
     
