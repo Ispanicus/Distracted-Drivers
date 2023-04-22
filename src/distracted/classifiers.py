@@ -125,7 +125,7 @@ def main(setup: ExperimentSetup):
 
     data_kwargs = {
         # "num_workers": 4,
-        # "pin_memory": True,
+        "pin_memory": True,
         "shuffle": True,  # Only done once for entire run
         "batch_size": setup.params["batch_size"],
         "drop_last": True,  # Drop last batch if it's not full
@@ -151,7 +151,7 @@ def main(setup: ExperimentSetup):
     with mlflow.start_run():
         log_params(setup.params)
 
-        for epoch in range(1, 2):  # setup.params["epochs"] + 1):
+        for epoch in range(1, setup.params["epochs"] + 1):
             with timeit("train"):
                 train_loss = train(
                     model, device, train_loader, optimizer, epoch, log_interval=10
