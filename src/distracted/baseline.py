@@ -61,8 +61,6 @@ def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
                     loss.item(),
                 )
             )
-    test_loss /= len(test_loader.dataset)
-
 
 def test(model, device, test_loader, epoch):
     model.eval()
@@ -96,11 +94,11 @@ def test(model, device, test_loader, epoch):
 
     if test_loss < best_test_loss:
         best_test_loss = test_loss
-        sd = state_dict
+        sd = model.state_dict()
         m = model
     if epoch == EPOCHS:
-        mlflow.pytorch.log_state_dict(sd, artifact_path)
-        mlflow.pytorch.log_model(m, artifact_path)
+        mlflow.pytorch.log_state_dict(sd, "model")
+        mlflow.pytorch.log_model(m, "model")
 
 def main():
 
@@ -155,9 +153,6 @@ def main():
     mlflow.set_tracking_uri(uri=f'file://{DATA_PATH}\mlruns')
 
     with mlflow.start_run():
-
-        artifact_path = "model"
-        state_dict = model.state_dict()
 
         log_params({"lr": LR, "gamma": GAMMA, "epochs": EPOCHS, "batch_size": BATCH_SIZE, "model_name": MODEL_NAME_MLFOW, "adapters": ADAPTERS})
 
