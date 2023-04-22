@@ -78,9 +78,13 @@ def load_onehot(path: Path) -> Tensor[H, W, C]:
 
 
 class Hyperparameters(BaseModel):
-    batch_size: int = 128
-    learning_rate: float = 2.0
-    epochs: int = 10
+    batch_size: int
     model_name: str
-    adapters: list[int] = []
-    gamma: float = 1.0
+    adapters: list[int]
+    top_lr: float
+    top_decay: float
+    body_lr: float
+    body_decay: float
+    gamma: float
+    epochs: int
+
