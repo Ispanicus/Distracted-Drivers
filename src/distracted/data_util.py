@@ -3,7 +3,6 @@ import numpy as np
 from time import perf_counter
 from contextlib import contextmanager
 import datetime as dt
-from pydantic import BaseModel
 
 
 import pandas as pd
