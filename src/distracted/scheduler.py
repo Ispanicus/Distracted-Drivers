@@ -8,14 +8,16 @@ from pathlib import Path
 MAX_WORKERS = 8
 
 classify_path = str((Path(__file__).parent / "classifiers.py").absolute())
-
+venv_python_path = str((Path(__file__).parents[2]/"venv/Scripts/python").absolute())
 
 def task(**kwargs):
-    cmd = ["python", classify_path]
+    cmd = [classify_path]
     for key, value in kwargs.items():
         cmd.append(key)
         cmd.append(str(value))
-    result = subprocess.run(cmd, capture_output=True)
+    result = subprocess.Popen([venv_python_path] + cmd,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE)
     return result
 
 
@@ -43,7 +45,8 @@ def main():
             else:
                 results[run_slug] = {run_slug: {"results": data, "kwargs": kwargs}}
                 if data.returncode != 0:
-                    errors.append(data.stderr.decode("utf-8"))
+                    _, stderr = data.communicate()
+                    errors.append(stderr.decode("utf-8"))
     print("Finished ThreadPoolExecutor")
     print("Errors detected!")
     for error in errors:
