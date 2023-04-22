@@ -72,5 +72,5 @@ def finetune_setup(**params) -> ExperimentSetup:
     )
 
 
-def segmentation_setup() -> ExperimentSetup:
+def segmentation_setup(**params) -> ExperimentSetup:
     ...
