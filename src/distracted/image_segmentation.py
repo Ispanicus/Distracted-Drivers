@@ -20,7 +20,7 @@ from distracted.data_util import (
 
 hv.extension("bokeh")
 
-DISPLAY_IN_NOTEBOOK = False  # Enable to display the panoptic segmentation in notebook
+DISPLAY_IN_NOTEBOOK = True  # Enable to display the panoptic segmentation in notebook
 
 
 def main():
@@ -42,13 +42,12 @@ def main():
     test_paths = [row for row in (DATA_PATH / "imgs/test").glob("*.jpg")]
     assert test_paths
     for jpg_path in tqdm(train_paths + test_paths):
-        path = (onehot_path / jpg_path.name).with_suffix(".jpg.npz")
-        if path.exists():
+        if jpg_path.name != "img_0.jpg":
             continue
         img = Image.open(jpg_path)
         onehot = segmentation_pipeline(img, model, processor)
 
-        save_onehot(path, onehot)
+        # save_onehot(path, onehot)
 
 
 def segmentation_pipeline(img: Image.Image, model, processor):

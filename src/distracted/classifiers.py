@@ -138,8 +138,8 @@ def main(setup: ExperimentSetup):
     device = torch.device("cuda")
 
     data_kwargs = {
-        "num_workers": 4,
-        "pin_memory": True,
+        # "num_workers": 4,
+        # "pin_memory": True,
         "shuffle": True,
         "batch_size": setup.params["batch_size"],
         "drop_last": True,  # Drop last batch if it's not full
@@ -147,9 +147,7 @@ def main(setup: ExperimentSetup):
 
     train_loader, dev_loader = [
         DataLoader(
-            DriverDataset(
-                split, returns=setup.dataloader_returns, transform=setup.transform
-            ),
+            DriverDataset(split, **setup.dataset_kwargs),
             **data_kwargs,
         )
         for split in ["train", "dev"]

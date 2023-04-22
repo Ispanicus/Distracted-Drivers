@@ -1,3 +1,4 @@
+import time
 from distracted.data_util import (
     DATA_PATH,
     get_train_df,
@@ -7,6 +8,7 @@ from distracted.data_util import (
     timeit,
     load_onehot,
 )
+import multiprocessing
 import torchvision.io
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
@@ -14,6 +16,7 @@ from datasets import load_dataset
 from typing import Literal
 import pickle
 from transformers import EfficientNetImageProcessor
+from distracted.experimental_setups import PREPROCESSOR
 
 # __df = get_train_df()
 # __dev_subjects = (
@@ -69,11 +72,15 @@ def dataset_loader():
 
 
 class DriverDataset(Dataset):
+    _gigacache = []
+
     def __init__(
         self,
         split: Literal["train"] | Literal["dev"] | Literal["test"],
         returns=["img_name", "torch_image", "preprocessed_image", "segment", "label"],
         transform=None,
+        *,
+        fuck_your_ram: int = 0,
     ):
         self.transform = transform
         self.returns = returns
@@ -81,23 +88,33 @@ class DriverDataset(Dataset):
             get_train_df().query(f"subject in @subjects[@split]").drop(columns="img")
         )
 
+        # Load everything into memory :)
+        i_know_what_im_about_to_do = str(fuck_your_ram)[-2:] == "42"
+        if fuck_your_ram and not i_know_what_im_about_to_do:
+            # memory *= n_processes
+            self.naughty_boi = lambda: ...  # Crashes if multiprocessing
+
+        self._gigacache = [
+            self[i] for i in range(len(self)) if i < fuck_your_ram
+        ]  # range(len(self)) is important for performance: __iter__ == __bad__
+
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, idx):
+        if idx < len(self._gigacache):
+            return self._gigacache[idx]
+
         row = self.df.iloc[idx]
 
         if "torch_image" or "preprocessed_image" in self.returns:
             img = torchvision.io.read_image(str(row.path.absolute()))
-            preprocessor = EfficientNetImageProcessor.from_pretrained
 
         # Do callables, such that we do lazy loading
         returns = {
             "img_name": lambda row: row.path.name,
             "torch_image": lambda row: img,
-            "preprocessed_image": lambda row: preprocessor("google/efficientnet-b0")(
-                img, return_tensors="pt"
-            ),
+            "preprocessed_image": lambda row: PREPROCESSOR(img, return_tensors="pt"),
             "segment": lambda row: load_onehot(
                 next((DATA_PATH / "onehot").glob(f"{row.path.name}.npz"))
             ),
@@ -168,5 +185,39 @@ def img_example():
 
 
 if __name__ == "__main__":
-    segment_example()
-    img_example()
+    # segment_example()
+    # img_example()
+
+    from tqdm import tqdm
+    from distracted.experimental_setups import preprocess_img
+
+    BATCH_SIZE = 128
+    with timeit("total"):
+        with timeit("dataset"):
+            segment_train_dataset = DriverDataset(
+                "train",
+                returns=["preprocessed_image", "label"],
+                fuck_your_ram=1_000_042,
+            )
+
+        with timeit("dataloader"):
+            segment_train_dataloader = DataLoader(
+                segment_train_dataset,
+                batch_size=BATCH_SIZE,
+                shuffle=True,
+                drop_last=True,
+            )
+
+        with timeit("iter dataloader"):
+            iterator = iter(segment_train_dataloader)
+
+        with timeit("loop"):
+            for torch_images, labels in tqdm(iterator):
+                pass
+
+        with timeit("iter dataloader"):
+            iterator = iter(segment_train_dataloader)
+
+        with timeit("loop w. cuda"):
+            for torch_images, labels in tqdm(iterator):
+                torch_images.to("cuda")

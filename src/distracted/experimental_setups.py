@@ -22,14 +22,9 @@ class ExperimentSetup(typing.NamedTuple):
     params: dict  # Hyperparameters
 
 
-def preprocess_img(
-    x,
-):
-    data, label = x
-    preprocessed_data = PREPROCESSOR(data, return_tensors="pt")[
-        "pixel_values"
-    ].squeeze()
-    return [preprocessed_data, label]
+def unpack(x):
+    data_dict, label = x
+    return [data_dict["pixel_values"].squeeze(), label]
 
 
 def adapter_setup(**params) -> ExperimentSetup:
@@ -46,8 +41,11 @@ def adapter_setup(**params) -> ExperimentSetup:
     return ExperimentSetup(
         model=model,
         model_name=f"{MODEL_NAME}_adapter",
-        dataloader_returns=["torch_image", "label"],
-        transform=preprocess_img,
+        dataset_kwargs={
+            "returns": ["preprocessed_image", "label"],
+            "fuck_your_ram": 1_000_042,
+            "transform": unpack,
+        },
         params=params,
     )
 
@@ -66,8 +64,11 @@ def finetune_setup(**params) -> ExperimentSetup:
     return ExperimentSetup(
         model=model,
         model_name=f"{MODEL_NAME}_finetune",
-        dataloader_returns=["torch_image", "label"],
-        transform=preprocess_img,
+        dataset_kwargs={
+            "returns": ["preprocessed_image", "label"],
+            "fuck_your_ram": 1_000_042,
+            "transform": unpack,
+        },
         params=params,
     )
 
