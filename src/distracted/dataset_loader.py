@@ -108,17 +108,25 @@ class DriverDataset(Dataset):
 
         row = self.df.iloc[idx]
 
-        if "torch_image" or "preprocessed_image" in self.returns:
-            img = torchvision.io.read_image(str(row.path.absolute()))
+        def load_img(row):
+            return torchvision.io.read_image(str(row.path.absolute()))
+
+        def load_segment(row):
+            with timeit("load onehot"):
+                return load_onehot(
+                    next((DATA_PATH / "onehot").glob(f"{row.path.name}.npz"))
+                )
+
+        def preprocess_img(row):
+            with timeit("preprocess img"):
+                return PREPROCESSOR(load_img(row), return_tensors="pt")
 
         # Do callables, such that we do lazy loading
         returns = {
             "img_name": lambda row: row.path.name,
-            "torch_image": lambda row: img,
-            "preprocessed_image": lambda row: PREPROCESSOR(img, return_tensors="pt"),
-            "segment": lambda row: load_onehot(
-                next((DATA_PATH / "onehot").glob(f"{row.path.name}.npz"))
-            ),
+            "torch_image": load_img,
+            "preprocessed_image": preprocess_img,
+            "segment": load_segment,
             "label": lambda row: int(row.classname[1:]),
         }
 

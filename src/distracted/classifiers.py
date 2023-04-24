@@ -1,4 +1,5 @@
 # https://github.com/pytorch/examples/blob/main/mnist/main.py
+import time
 from distracted.experimental_setups import (
     ExperimentSetup,
     adapter_setup,
@@ -65,17 +66,29 @@ def init_cli(
     main(setup)
 
 
+def cross_entropy_loss(output, labels):
+    try:
+        return F.cross_entropy(output.logits, labels)
+    except AttributeError:
+        return F.cross_entropy(output, labels)
+
+
 def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
     model.train()
     train_loss = 0
-    for batch_idx, (data, target) in enumerate(train_loader):
-        data, target = data.to(device), target.to(device)
+    for batch_idx, (*data, target) in enumerate(train_loader):
+        with timeit("start"):
+            ...
+        data = [d.to(device) for d in data]
+        target = target.to(device)
         optimizer.zero_grad()
-        output = model(data)
-        loss = F.cross_entropy(output.logits, target)
+        output = model(*data)
+        loss = cross_entropy_loss(output, target)
         loss.backward()
         train_loss += loss
         optimizer.step()
+        with timeit("end"):
+            ...
         if batch_idx % log_interval == 0:
             print(
                 "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
@@ -94,10 +107,11 @@ def test(model, device, test_loader, epoch):
     test_loss = 0
     # correct = 0
     with torch.no_grad():
-        for data, target in test_loader:
-            data, target = data.to(device), target.to(device)
-            output = model(data)
-            test_loss += F.cross_entropy(output.logits, target)
+        for *data, target in test_loader:
+            data = [d.to(device) for d in data]
+            target = target.to(device)
+            output = model(*data)
+            test_loss += cross_entropy_loss(output, target)
             # pred = output.logits.argmax(
             #     dim=1, keepdim=True
             # )  # get the index of the max log-probability
@@ -135,6 +149,7 @@ def main(setup: ExperimentSetup):
         DataLoader(
             DriverDataset(split, **setup.dataset_kwargs),
             **data_kwargs,
+            **setup.dataloader_kwargs,
         )
         for split in ["train", "dev"]
     ]

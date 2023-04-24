@@ -1,6 +1,7 @@
 import typing
 import torch.nn as nn
 from distracted.adapters import get_adapter_model
+import distracted.segmentation_nn as segmentation_nn
 from transformers import EfficientNetForImageClassification, EfficientNetImageProcessor
 
 MODEL_NAME = "google/efficientnet-b3"
@@ -19,6 +20,7 @@ class ExperimentSetup(typing.NamedTuple):
     model_name: str  # Name of model
     dataset_kwargs: dict[str, any]
     params: dict  # Hyperparameters
+    dataloader_kwargs: dict[str, any] = {}
 
 
 def unpack(x):
@@ -73,4 +75,16 @@ def finetune_setup(**params) -> ExperimentSetup:
 
 
 def segmentation_setup(**params) -> ExperimentSetup:
-    ...
+    model = segmentation_nn.Net()
+
+    return ExperimentSetup(
+        model=model,
+        model_name=f"{MODEL_NAME}_segment",
+        dataset_kwargs={
+            "returns": ["segment", "preprocessed_image", "label"],
+            "transform": segmentation_nn.segment_transform,
+            "fuck_your_ram": 2500,
+        },
+        dataloader_kwargs={"collate_fn": segmentation_nn.collate_fn},
+        params=params,
+    )
