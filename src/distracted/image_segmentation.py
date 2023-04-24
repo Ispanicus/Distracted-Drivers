@@ -42,12 +42,13 @@ def main():
     test_paths = [row for row in (DATA_PATH / "imgs/test").glob("*.jpg")]
     assert test_paths
     for jpg_path in tqdm(train_paths + test_paths):
-        if jpg_path.name != "img_0.jpg":
+        path = (onehot_path / jpg_path.name).with_suffix(".jpg.npz")
+        if path.exists():
             continue
         img = Image.open(jpg_path)
         onehot = segmentation_pipeline(img, model, processor)
 
-        # save_onehot(path, onehot)
+        save_onehot(path, onehot)
 
 
 def segmentation_pipeline(img: Image.Image, model, processor):
