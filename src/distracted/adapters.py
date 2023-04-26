@@ -36,11 +36,11 @@ class BaseModelOutputWithNoAttention(ModelOutput):
 
 
 class EfficientNetAdapterEncoding(EfficientNetEncoder):
-    def __init__(self, config, model, adapter_base_block_idx):
+    def __init__(self, config, model, adapter_base_block_idx,adapter_weight=0):
         encoder_instance = model.efficientnet.encoder
         self.config = model.config
         super().__init__(self.config)
-
+        self.adapter_weight = adapter_weight
         self.blocks = encoder_instance.blocks
         self.top_conv = encoder_instance.top_conv
         self.top_bn = encoder_instance.top_bn
@@ -98,9 +98,13 @@ class EfficientNetAdapterEncoding(EfficientNetEncoder):
                 all_hidden_states += (hidden_states,)
             if idx in self.adapter_idxs:
                 adapter = next(adapters)
-                hidden_states = adapter(hidden_states)
+                adapter_hidden_states = adapter(hidden_states)
                 if output_hidden_states:
-                    all_hidden_states += (hidden_states,)
+                    all_hidden_states += (adapter_hidden_states,)
+                if self.adapter_weight:
+                    hidden_states = (self.adapter_weight * adapter_hidden_states + hidden_states)/2
+                else:
+                    hidden_states = adapter_hidden_states
 
         hidden_states = self.top_conv(hidden_states)
         hidden_states = self.top_bn(hidden_states)
