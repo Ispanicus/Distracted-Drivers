@@ -40,7 +40,7 @@ class EfficientNetAdapterEncoding(EfficientNetEncoder):
         encoder_instance = model.efficientnet.encoder
         self.config = model.config
         super().__init__(self.config)
-        self.adapter_weight = adapter_weight
+        self.adapter_weight = adapter_weight # weight of adapter when parallezing 0 means serial
         self.blocks = encoder_instance.blocks
         self.top_conv = encoder_instance.top_conv
         self.top_bn = encoder_instance.top_bn
@@ -98,13 +98,14 @@ class EfficientNetAdapterEncoding(EfficientNetEncoder):
                 all_hidden_states += (hidden_states,)
             if idx in self.adapter_idxs:
                 adapter = next(adapters)
-                adapter_hidden_states = adapter(hidden_states)
-                if output_hidden_states:
-                    all_hidden_states += (adapter_hidden_states,)
+                adapter_hidden_states = adapter(hidden_states)   
                 if self.adapter_weight:
                     hidden_states = (self.adapter_weight * adapter_hidden_states + hidden_states)/2
                 else:
                     hidden_states = adapter_hidden_states
+                if output_hidden_states:
+                    all_hidden_states += (adapter_hidden_states,)
+                    all_hidden_states += (hidden_states,)
 
         hidden_states = self.top_conv(hidden_states)
         hidden_states = self.top_bn(hidden_states)
@@ -122,13 +123,14 @@ class EfficientNetAdapterEncoding(EfficientNetEncoder):
 def get_adapter_model(
     model_name: str,  # ex: "google/efficientnet-b3"
     adapter_locations: list[int],  # list of (base_block_idx,adapter_block_idx)
+    adapter_weight: float = 0,  # weight of adapter when parallezing 0 means serial
 ):
     adapter_locations.sort()
     adapter_base_block_idx = adapter_locations
     model = EfficientNetForImageClassification.from_pretrained(model_name)
     config = model.config
     adapter_encoding = EfficientNetAdapterEncoding(
-        config, model, adapter_base_block_idx
+        config, model, adapter_base_block_idx, adapter_weight=adapter_weight
     )
     model.efficientnet.encoder = adapter_encoding
     return model
