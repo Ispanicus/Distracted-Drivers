@@ -17,6 +17,11 @@ from distracted.dataset_loader import DriverDataset
 import mlflow
 from mlflow import log_metric, log_params
 import click
+import pandas as pd
+import seaborn as sns
+from matplotlib import pyplot as plt
+from sklearn.metrics import confusion_matrix
+from distracted.id2label import ID2LABEL
 
 
 torch.manual_seed(42)
@@ -127,11 +132,21 @@ def get_confusion_matrix(model, device, test_loader):
         true_values = []
         predicted_values = []
         for *data, target in test_loader:
-            data = [d.to(device for d in data)]
+            data = [d.to(device) for d in data]
             target = target.to(device)
             output = model(*data)
-            pred = output.logits.argmax(dim=1, keepdim=True)
-
+            for row in output.logits:
+                predicted_label = ID2LABEL[row.argmax(-1).item()]
+                predicted_values.append(predicted_label)
+            for row in target:
+                true_label = ID2LABEL[row.item()]
+                true_values.append(true_label)
+        cm = confusion_matrix(true_values, predicted_values)
+        df_cm = pd.DataFrame(cm, index = [i for i in ID2LABEL.values()],
+                  columns = [i for i in ID2LABEL.values()])
+        fig = plt.figure(figsize=(16,10))
+        sns.heatmap(df_cm, annot=True, fmt='g', ax=f.axes[0])
+    return fig
 
 
 
@@ -195,9 +210,11 @@ def main(setup: ExperimentSetup):
 
             log_metric("train loss", train_loss)
             log_metric("val loss", test_loss)
-
+        fig = get_confusion_matrix(model, device, test_loader)
         mlflow.pytorch.log_state_dict(state, "model")
         mlflow.pytorch.log_model(model, "model")
+        mlflow.log_artifact(fig, "confusion_matrix.png")
+        
 
 
 if __name__ == "__main__":
