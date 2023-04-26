@@ -112,14 +112,12 @@ class DriverDataset(Dataset):
             return torchvision.io.read_image(str(row.path.absolute()))
 
         def load_segment(row):
-            with timeit("load onehot"):
-                return load_onehot(
-                    next((DATA_PATH / "onehot").glob(f"{row.path.name}.npz"))
+            return load_onehot(
+                next((DATA_PATH / "onehot").glob(f"{row.path.name}.npz"))
                 )
 
         def preprocess_img(row):
-            with timeit("preprocess img"):
-                return PREPROCESSOR(load_img(row), return_tensors="pt")
+            return PREPROCESSOR(load_img(row), return_tensors="pt")
 
         # Do callables, such that we do lazy loading
         returns = {
