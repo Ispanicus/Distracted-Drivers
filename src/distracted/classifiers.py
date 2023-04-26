@@ -121,6 +121,19 @@ def test(model, device, test_loader, epoch):
     # log_metric("val accuracy", correct / len(test_loader.dataset))
     return test_loss / len(test_loader)
 
+def get_confusion_matrix(model, device, test_loader):
+    model.eval()
+    with torch.no_grad():
+        true_values = []
+        predicted_values = []
+        for *data, target in test_loader:
+            data = [d.to(device for d in data)]
+            target = target.to(device)
+            output = model(*data)
+            pred = output.logits.argmax(dim=1, keepdim=True)
+
+
+
 
 def get_optimiser_params(model, top_lr, top_decay, body_lr=0, body_decay=0, **_):
     top_params, body_params = [], []
@@ -145,13 +158,13 @@ def main(setup: ExperimentSetup):
         "drop_last": True,  # Drop last batch if it's not full
     }
 
-    train_loader, dev_loader = [
+    train_loader, dev_loader, test_loader = [
         DataLoader(
             DriverDataset(split, **setup.dataset_kwargs),
             **data_kwargs,
             **setup.dataloader_kwargs,
         )
-        for split in ["train", "dev"]
+        for split in ["train", "dev","test"]
     ]
 
     model = setup.model.to(device)
