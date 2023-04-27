@@ -84,8 +84,6 @@ def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
     model.train()
     train_loss = 0
     for batch_idx, (*data, target) in enumerate(train_loader):
-        with timeit("start"):
-            ...
         data = [d.to(device) for d in data]
         target = target.to(device)
         optimizer.zero_grad()
@@ -94,8 +92,6 @@ def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
         loss.backward()
         train_loss += loss
         optimizer.step()
-        with timeit("end"):
-            ...
         if batch_idx % log_interval == 0:
             print(
                 "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
