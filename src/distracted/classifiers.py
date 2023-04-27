@@ -96,7 +96,7 @@ def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
             print(
                 "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
                     epoch,
-                    batch_idx * len(data),
+                    batch_idx * len(data[0]),
                     len(train_loader.dataset),
                     100.0 * batch_idx / len(train_loader),
                     loss,
