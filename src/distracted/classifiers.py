@@ -215,7 +215,7 @@ def main(setup: ExperimentSetup):
         mlflow.pytorch.log_state_dict(state, "model")
         mlflow.pytorch.log_model(model, "model")
         fig = get_confusion_matrix(model, device, test_loader)
-        mlflow.log_artifact(fig, "confusion_matrix.png")
+        mlflow.log_figure(fig, "confusion_matrix.png")
         
 
 
