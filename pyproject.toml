@@ -12,7 +12,8 @@ dependencies = [
     "mlflow",
     "click",
     "transformers",
-    "seaborn"
+    "seaborn",
+	"mirror @ git+https://github.com/FrancescoSaverioZuppichini/mirror.git"
 ]
 
 [tool.setuptools.packages.find]

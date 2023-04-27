@@ -84,8 +84,6 @@ def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
     model.train()
     train_loss = 0
     for batch_idx, (*data, target) in enumerate(train_loader):
-        with timeit("start"):
-            ...
         data = [d.to(device) for d in data]
         target = target.to(device)
         optimizer.zero_grad()
@@ -94,18 +92,17 @@ def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
         loss.backward()
         train_loss += loss
         optimizer.step()
-        with timeit("end"):
-            ...
         if batch_idx % log_interval == 0:
             print(
                 "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
                     epoch,
-                    batch_idx * len(data),
+                    batch_idx * len(data[0]),
                     len(train_loader.dataset),
                     100.0 * batch_idx / len(train_loader),
                     loss,
                 )
             )
+    
     return train_loss / len(train_loader)
 
 
@@ -124,7 +121,7 @@ def test(model, device, test_loader, epoch):
             # )  # get the index of the max log-probability
             # correct += pred.eq(target.view_as(pred)).sum().item()
 
-    print(f"\nTest set Epoch {epoch}: Average loss: {test_loss:.4f}\n")
+    print(f"\nTest set Epoch {epoch}: Average loss: {(test_loss / len(test_loader)):.4f}\n")
     # log_metric("val accuracy", correct / len(test_loader.dataset))
     return test_loss / len(test_loader)
 
