@@ -14,7 +14,7 @@ PREPROCESSOR = EfficientNetImageProcessor.from_pretrained(
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 #default model
-#model = mlflow.pytorch.load_model(model_uri='file://D:\Github\Distracted-Drivers\data\mlruns/0/aa246d9d2106472492442ff362b1b143/artifacts/model')
+model = mlflow.pytorch.load_model(model_uri='file://D:\Github\Distracted-Drivers\data\mlruns/0/aa246d9d2106472492442ff362b1b143/artifacts/model')
 
 def pp(x):
     x = (x-x.min())
@@ -28,6 +28,7 @@ def preprocess_images(images):
     return preprocessed_images
 
 def correct_predictions(model, classname = 'c0', subject = 'p026'):
+    type(model).__call__ = lambda self, x: self.forward(x).logits
     cam = GradCam(model, device=device)
     df = get_train_df()
     images = df.query("subject == @subject and classname == @classname")['img']
@@ -39,7 +40,7 @@ def correct_predictions(model, classname = 'c0', subject = 'p026'):
         if j >= 10:
             break
         output = model(image.unsqueeze(0).to(device))
-        if output.logits.argmax() == int(classname[-1]):
+        if output.argmax() == int(classname[-1]):
             tensr = cam(input_image = image.unsqueeze(0).to(device), layer=None, postprocessing=pp)[0].squeeze(0)
             img = Image.fromarray(np.array(255*tensr.permute(1,2,0)).astype(np.uint8))
             row, col = divmod(j, 5)
@@ -50,6 +51,7 @@ def correct_predictions(model, classname = 'c0', subject = 'p026'):
     plt.show()
 
 def confused_predictions(model, classname = 'c0', subject = 'p026'):
+    type(model).__call__ = lambda self, x: self.forward(x).logits
     cam = GradCam(model, device=device)
     df = get_train_df()
     images = df.query("subject == @subject and classname == @classname")['img']
@@ -61,7 +63,7 @@ def confused_predictions(model, classname = 'c0', subject = 'p026'):
         if j >= 10:
             break
         output = model(image.unsqueeze(0).to(device))
-        if output.logits.argmax() != int(classname[-1]):
+        if output.argmax() != int(classname[-1]):
             tensr = cam(input_image = image.unsqueeze(0).to(device), layer=None, postprocessing=pp)[0].squeeze(0)
             img = Image.fromarray(np.array(255*tensr.permute(1,2,0)).astype(np.uint8))
             row, col = divmod(j, 5)
@@ -70,3 +72,5 @@ def confused_predictions(model, classname = 'c0', subject = 'p026'):
             axes[row, col].set_title(f'True: {classname} \n Predicted: c{output.logits.argmax()} ')
             j += 1
     plt.show()
+
+correct_predictions(model=model)
