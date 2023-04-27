@@ -75,7 +75,7 @@ def init_cli(
 
 def cross_entropy_loss(output, labels):
     try:
-        return F.cross_entropy(output.logits, labels)
+        return F.cross_entropy(output, labels)
     except AttributeError:
         return F.cross_entropy(output, labels)
 
@@ -134,7 +134,7 @@ def get_confusion_matrix(model, device, test_loader):
             data = [d.to(device) for d in data]
             target = target.to(device)
             output = model(*data)
-            for row in output.logits:
+            for row in output:
                 predicted_label = ID2LABEL[row.argmax(-1).item()]
                 predicted_values.append(predicted_label)
             for row in target:
