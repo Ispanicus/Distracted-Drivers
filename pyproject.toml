@@ -11,7 +11,8 @@ dependencies = [
     "timm",
     "mlflow",
     "click",
-    "transformers"
+    "transformers",
+    "seaborn"
 ]
 
 [tool.setuptools.packages.find]
