@@ -210,8 +210,8 @@ def main(setup: ExperimentSetup):
 
                 scheduler.step()
 
-                log_metric("train loss", train_loss)
-                log_metric("val loss", test_loss)
+                log_metric("train loss", train_loss, step=epoch)
+                log_metric("val loss", test_loss, step=epoch)
         finally:
             mlflow.pytorch.log_state_dict(state, "model")
             mlflow.pytorch.log_model(model, "model")
