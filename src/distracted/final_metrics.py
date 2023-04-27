@@ -31,7 +31,7 @@ def final_metrics(run_id:str, test_loader):
 
     model_path = f"../data/mlruns/0/{run_id}/artifacts/model"
     model = mlflow.pytorch.load_model(model_path)
-    fig, accuracy = get_confusion_matrix(model,device,test_loader)
+    fig, accuracy = get_confusion_matrix(model,test_loader)
         
 if __name__ == "__main__":
     pass

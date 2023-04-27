@@ -125,8 +125,9 @@ def test(model, device, test_loader, epoch):
     # log_metric("val accuracy", correct / len(test_loader.dataset))
     return test_loss / len(test_loader)
 
-def get_confusion_matrix(model, device, test_loader):
+def get_confusion_matrix(model, test_loader):
     model.eval()
+    device = torch.device("cuda")
     with torch.no_grad():
         true_values = []
         predicted_values = []
@@ -217,7 +218,7 @@ def main(setup: ExperimentSetup):
             log_metric("val loss", test_loss)
         mlflow.pytorch.log_state_dict(state, "model")
         mlflow.pytorch.log_model(model, "model")
-        fig, _ = get_confusion_matrix(model, device, dev_loader)
+        fig, _ = get_confusion_matrix(model, dev_loader)
         mlflow.log_figure(fig, "confusion_matrix.png")
         
 
