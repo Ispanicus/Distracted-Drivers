@@ -69,6 +69,6 @@ def confused_predictions(model, classname = 'c0', subject = 'p026'):
             row, col = divmod(j, 5)
             axes[row, col].imshow(img)
             axes[row, col].axis("off")
-            axes[row, col].set_title(f'True: {classname} \n Predicted: c{output.logits.argmax()} ')
+            axes[row, col].set_title(f'True: {classname} \n Predicted: c{output.argmax()} ')
             j += 1
     plt.show()
