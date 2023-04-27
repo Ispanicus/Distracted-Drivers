@@ -1,10 +1,10 @@
-from pathlib import Path
-import numpy as np
-from time import perf_counter
-from contextlib import contextmanager
 import datetime as dt
+from contextlib import contextmanager
+from pathlib import Path
+from time import perf_counter
 
-
+import mlflow
+import numpy as np
 import pandas as pd
 import torch
 from PIL import Image
@@ -74,3 +74,10 @@ def save_onehot(path: Path, onehot: Tensor[H, W, C]):
 
 def load_onehot(path: Path) -> Tensor[H, W, C]:
     return torch.from_numpy(np.load(path)["data"])
+
+
+def load_model(id: str):
+    """E.g.: model = load_model("aa246d9d2106472492442ff362b1b143")"""
+    return mlflow.pytorch.load_model(
+        model_uri=f"file://{DATA_PATH}/mlruns/0/{id}/artifacts/model"
+    )
