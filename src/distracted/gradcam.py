@@ -14,7 +14,7 @@ PREPROCESSOR = EfficientNetImageProcessor.from_pretrained(
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 #default model
-model = mlflow.pytorch.load_model(model_uri='file://D:\Github\Distracted-Drivers\data\mlruns/0/aa246d9d2106472492442ff362b1b143/artifacts/model')
+#model = mlflow.pytorch.load_model(model_uri='file://D:\Github\Distracted-Drivers\data\mlruns/0/aa246d9d2106472492442ff362b1b143/artifacts/model')
 
 def pp(x):
     x = (x-x.min())
@@ -72,5 +72,3 @@ def confused_predictions(model, classname = 'c0', subject = 'p026'):
             axes[row, col].set_title(f'True: {classname} \n Predicted: c{output.logits.argmax()} ')
             j += 1
     plt.show()
-
-correct_predictions(model=model)
