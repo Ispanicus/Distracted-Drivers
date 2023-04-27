@@ -63,7 +63,7 @@ def collate_fn(
     segment, embeddings, label = zip(*x)
     # Turn class_arr (0, 1, 2, etc.) into one_hot
     class_arr = torch.stack(segment).to(torch.int64)
-    one_hot = F.one_hot(class_arr, num_classes=C).to(torch.float32)
+    one_hot = F.one_hot(class_arr, num_classes=C).to(torch.float32).permute(0, 3, 1, 2)
     return one_hot, torch.stack(embeddings), torch.tensor(label)
 
 

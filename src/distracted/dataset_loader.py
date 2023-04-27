@@ -129,7 +129,7 @@ def segment_example():
 
 
 if __name__ == "__main__":
-    segment_example()
+    # segment_example()
 
     from tqdm import tqdm
 
@@ -143,8 +143,11 @@ if __name__ == "__main__":
                 split="train",
                 returns=["segment", "preprocessed_image", "label"],
                 transform=segment_transform,
-                fuck_your_ram=128,
+                fuck_your_ram=1_000_000,
             )
+
+        with timeit("cache"):
+            segment_train_dataset[0]
 
         with timeit("dataloader"):
             segment_train_dataloader = DataLoader(
@@ -158,13 +161,14 @@ if __name__ == "__main__":
         with timeit("iter dataloader"):
             iterator = iter(segment_train_dataloader)
 
-        with timeit("loop"):
-            for torch_images, labels in tqdm(iterator):
+        with timeit("full_loop"):
+            for *data, labels in tqdm(iterator):
                 pass
 
         with timeit("iter dataloader"):
             iterator = iter(segment_train_dataloader)
 
-        with timeit("loop w. cuda"):
-            for torch_images, labels in tqdm(iterator):
-                torch_images.to("cuda")
+        with timeit("full_loop w. cuda"):
+            for *data, labels in tqdm(iterator):
+                for d in data:
+                    d.to("cuda")

@@ -3,6 +3,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from distracted.classifiers import get_confusion_matrix
+from distracted.data_util import load_model
 from distracted.dataset_loader import DriverDataset
 from distracted.experimental_setups import unpack
 
@@ -30,7 +31,8 @@ def final_metrics(run_id: str, test_loader):
     model_path = f"../data/mlruns/0/{run_id}/artifacts/model"
     model = mlflow.pytorch.load_model(model_path)
     fig, accuracy = get_confusion_matrix(model, test_loader)
+    return fig, accuracy
 
 
 if __name__ == "__main__":
-    pass
+    model = load_model("aa246d9d2106472492442ff362b1b143")

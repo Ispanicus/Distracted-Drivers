@@ -1,28 +1,27 @@
 # https://github.com/pytorch/examples/blob/main/mnist/main.py
 import time
+
+import click
+import mlflow
+import pandas as pd
+import seaborn as sns
+import torch
+import torch.nn.functional as F
+import torch.optim as optim
+from matplotlib import pyplot as plt
+from mlflow import log_metric, log_params
+from sklearn.metrics import confusion_matrix
+from torch.optim.lr_scheduler import StepLR
+from torch.utils.data import DataLoader
+
+from distracted.data_util import DATA_PATH, ID2LABEL, timeit
+from distracted.dataset_loader import DriverDataset
 from distracted.experimental_setups import (
     ExperimentSetup,
     adapter_setup,
     finetune_setup,
     segmentation_setup,
 )
-
-from torch.utils.data import DataLoader
-import torch
-import torch.nn.functional as F
-import torch.optim as optim
-from torch.optim.lr_scheduler import StepLR
-from distracted.data_util import DATA_PATH, timeit
-from distracted.dataset_loader import DriverDataset
-import mlflow
-from mlflow import log_metric, log_params
-import click
-import pandas as pd
-import seaborn as sns
-from matplotlib import pyplot as plt
-from sklearn.metrics import confusion_matrix
-from distracted.id2label import ID2LABEL
-
 
 torch.manual_seed(42)
 torch.backends.cudnn.benchmark = True
@@ -64,7 +63,9 @@ def init_cli(
     )
 
     if adapters:
-        setup = adapter_setup(**common_params, adapters=adapters, adapter_weight=adapter_weight)
+        setup = adapter_setup(
+            **common_params, adapters=adapters, adapter_weight=adapter_weight
+        )
     elif body_lr:
         setup = finetune_setup(**common_params, body_lr=body_lr, body_decay=body_decay)
     else:
@@ -72,24 +73,29 @@ def init_cli(
 
     main(setup)
 
+
 def cross_entropy_loss(output, labels):
     try:
         return F.cross_entropy(output, labels)
     except AttributeError:
         return F.cross_entropy(output, labels)
 
+
 def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
     model.train()
     train_loss = 0
     for batch_idx, (*data, target) in enumerate(train_loader):
-        data = [d.to(device) for d in data]
+        with timeit("device"):
+            data = [d.to(device) for d in data]
         target = target.to(device)
         optimizer.zero_grad()
-        output = model(*data)
+        with timeit("model"):
+            output = model(*data)
         loss = cross_entropy_loss(output, target)
         loss.backward()
         train_loss += loss
-        optimizer.step()
+        with timeit("step"):
+            optimizer.step()
         if batch_idx % log_interval == 0:
             print(
                 "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
@@ -100,8 +106,9 @@ def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
                     loss,
                 )
             )
-    
+
     return train_loss / len(train_loader)
+
 
 def test(model, device, test_loader, epoch):
     model.eval()
@@ -118,9 +125,12 @@ def test(model, device, test_loader, epoch):
             # )  # get the index of the max log-probability
             # correct += pred.eq(target.view_as(pred)).sum().item()
 
-    print(f"\nTest set Epoch {epoch}: Average loss: {(test_loss / len(test_loader)):.4f}\n")
+    print(
+        f"\nTest set Epoch {epoch}: Average loss: {(test_loss / len(test_loader)):.4f}\n"
+    )
     # log_metric("val accuracy", correct / len(test_loader.dataset))
     return test_loss / len(test_loader)
+
 
 def get_confusion_matrix(model, test_loader):
     model.eval()
@@ -145,11 +155,15 @@ def get_confusion_matrix(model, test_loader):
         accuracy = num_identical / len(true_values)
 
         cm = confusion_matrix(true_values, predicted_values)
-        df_cm = pd.DataFrame(cm, index = [i for i in ID2LABEL.values()],
-                  columns = [i for i in ID2LABEL.values()])
-        fig = plt.figure(figsize=(16,10))
-        sns.heatmap(df_cm, annot=True, fmt='g')
+        df_cm = pd.DataFrame(
+            cm,
+            index=[i for i in ID2LABEL.values()],
+            columns=[i for i in ID2LABEL.values()],
+        )
+        fig = plt.figure(figsize=(16, 10))
+        sns.heatmap(df_cm, annot=True, fmt="g")
     return fig, accuracy
+
 
 def get_optimiser_params(model, top_lr, top_decay, body_lr=0, body_decay=0, **_):
     top_params, body_params = [], []
@@ -206,17 +220,16 @@ def main(setup: ExperimentSetup):
                         test_loss := test(model, device, dev_loader, epoch)
                     ) < best_test_loss:
                         best_test_loss = test_loss
-                        state = model.state_dict()
 
                 scheduler.step()
 
                 log_metric("train loss", train_loss, step=epoch)
                 log_metric("val loss", test_loss, step=epoch)
         finally:
-            mlflow.pytorch.log_state_dict(state, "model")
             mlflow.pytorch.log_model(model, "model")
             fig, _ = get_confusion_matrix(model, dev_loader)
             mlflow.log_figure(fig, "confusion_matrix.png")
-        
+
+
 if __name__ == "__main__":
     init_cli()

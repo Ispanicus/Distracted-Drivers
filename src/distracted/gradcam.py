@@ -1,11 +1,12 @@
-from mirror.visualisations.core import GradCam
 import matplotlib.pyplot as plt
-import torch
-from PIL import Image
 import mlflow
-from distracted.data_util import get_train_df, load_model
-from transformers import EfficientNetImageProcessor
 import numpy as np
+import torch
+from mirror.visualisations.core import GradCam
+from PIL import Image
+from transformers import EfficientNetImageProcessor
+
+from distracted.data_util import get_train_df, load_model
 
 MODEL_NAME = "google/efficientnet-b3"
 PREPROCESSOR = EfficientNetImageProcessor.from_pretrained(MODEL_NAME)
