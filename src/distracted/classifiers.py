@@ -143,12 +143,18 @@ def get_confusion_matrix(model, device, test_loader):
             for row in target:
                 true_label = ID2LABEL[row.item()]
                 true_values.append(true_label)
+        num_identical = 0
+        for i in range(len(true_values)):
+            if true_values[i] == predicted_values[i]:
+                num_identical += 1
+        accuracy = num_identical / len(true_values)
+
         cm = confusion_matrix(true_values, predicted_values)
         df_cm = pd.DataFrame(cm, index = [i for i in ID2LABEL.values()],
                   columns = [i for i in ID2LABEL.values()])
         fig = plt.figure(figsize=(16,10))
         sns.heatmap(df_cm, annot=True, fmt='g')
-    return fig
+    return fig, accuracy
 
 
 
@@ -214,7 +220,7 @@ def main(setup: ExperimentSetup):
             log_metric("val loss", test_loss)
         mlflow.pytorch.log_state_dict(state, "model")
         mlflow.pytorch.log_model(model, "model")
-        fig = get_confusion_matrix(model, device, dev_loader)
+        fig, _ = get_confusion_matrix(model, device, dev_loader)
         mlflow.log_figure(fig, "confusion_matrix.png")
         
 
