@@ -28,7 +28,7 @@ def preprocess_images(images):
         preprocessed_images.append(PREPROCESSOR(image_func(), return_tensors="pt")['pixel_values'].squeeze())
     return preprocessed_images
 
-def correct_predictions(classname = 'c0', subject = 'p026', model = model):
+def correct_predictions(model, classname = 'c0', subject = 'p026'):
     df = get_train_df()
     images = df.query("subject == @subject and classname == @classname")['img']
     preprocessed_images = preprocess_images(images)    
@@ -49,7 +49,7 @@ def correct_predictions(classname = 'c0', subject = 'p026', model = model):
             j += 1
     plt.show()
 
-def confused_predictions(classname = 'c0', subject = 'p026', model):
+def confused_predictions(model, classname = 'c0', subject = 'p026'):
 
     df = get_train_df()
     images = df.query("subject == @subject and classname == @classname")['img']
