@@ -73,4 +73,4 @@ def save_onehot(path: Path, onehot: Tensor[H, W, C]):
 
 
 def load_onehot(path: Path) -> Tensor[H, W, C]:
-    return torch.from_numpy(np.load(path)["data"]).to(torch.float32)
+    return torch.from_numpy(np.load(path)["data"])
