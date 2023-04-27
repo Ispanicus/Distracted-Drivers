@@ -12,7 +12,8 @@ dependencies = [
     "mlflow",
     "click",
     "transformers",
-    "seaborn"
+    "seaborn",
+	"mirror"
 ]
 
 [tool.setuptools.packages.find]
