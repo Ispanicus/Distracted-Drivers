@@ -21,7 +21,7 @@ from distracted.data_util import (
 
 hv.extension("bokeh")
 
-DISPLAY_IN_NOTEBOOK = True  # Enable to display the panoptic segmentation in notebook
+DISPLAY_IN_NOTEBOOK = False  # Enable to display the panoptic segmentation in notebook
 
 
 def main():
@@ -40,22 +40,24 @@ def main():
     onehot_path = DATA_PATH / "onehot"
     onehot_path.mkdir(exist_ok=True)
     train_paths = [row.path for row in df.itertuples()]
-    test_paths = [row for row in (DATA_PATH / "imgs/test").glob("*.jpg")]
-    assert test_paths
-    for jpg_path in tqdm(train_paths + test_paths):
+    # test_paths = [row for row in (DATA_PATH / "imgs/test").glob("*.jpg")]
+    # assert test_paths
+    for jpg_path in tqdm(train_paths):
         path = (onehot_path / jpg_path.name).with_suffix(".jpg.npz")
         if path.exists():
             continue
         img = Image.open(jpg_path)
-        onehot = segmentation_pipeline(img, model, processor)
+        class_arr = segmentation_pipeline(img, model, processor)
+        if DISPLAY_IN_NOTEBOOK:
+            draw_semantic_segmentation(class_arr)
 
-        save_onehot(path, onehot)
+        save_onehot(path, class_arr)
 
 
 def segmentation_pipeline(img: Image.Image, model, processor):
-    preprocessed_image = processor(images=img, return_tensors="pt")
+    preprocessed_image = processor(images=img, return_tensors="pt")["pixel_values"]
 
-    outputs = model(**{k: v.to("cuda") for k, v in preprocessed_image.items()})
+    outputs = model(preprocessed_image.to("cuda"))
     for k, v in list(outputs.items()):
         outputs[k] = v.to("cpu")
 
@@ -64,11 +66,16 @@ def segmentation_pipeline(img: Image.Image, model, processor):
         target_sizes=[img.size[::-1]],
         label_ids_to_fuse=set(model.config.id2label),
     )[0]
+    id_to_class = {  # ids are enumerations -> Extract model id -> convert to class id
+        int(s["id"]): MASK_LABELS.index(label) + 1
+        for s in prediction["segments_info"]
+        if (label := model.config.id2label[s["label_id"]]) in MASK_LABELS
+    }
+    class_arr = prediction["segmentation"].apply_(lambda x: id_to_class.get(x, 0))
+    return class_arr
 
-    return extract_onehot(prediction, model.config.id2label)
 
-
-def extract_onehot(prediction, model_id2label):
+def extract_class(prediction, model_id2label):
     # segment_arr[x, y] == 42 if this pixel belongs to class 42, e.g. "motercycle"
     segment_arr: Tensor[H, W] = prediction["segmentation"]
     assert segment_arr.shape == (H, W)
@@ -84,26 +91,26 @@ def extract_onehot(prediction, model_id2label):
 
         one_hot[..., class_layer][segment_arr == segment["id"]] = 1
 
-    if DISPLAY_IN_NOTEBOOK:
-        draw_semantic_segmentation(one_hot)
-
     return one_hot
 
 
 def squeeze_onehots(one_hot: Tensor[H, W, C]):
+    one_hot = load_onehot("data/onehot/img_0.jpg.npz")
     unhot_encode: Tensor[H, W, C] = torch.ones_like(one_hot).cumsum(axis=-1)
+    unhot_encode.shape
+    unhot_encode.max()
+    one_hot.cumsum(axis=-1)
+
     for file in (DATA_PATH / "onehot").glob("*.jpg.npz"):
         one_hot = load_onehot(file)
         # The following .sum is arbitrary, could also be .max, since each layer is non-overlapping
         class_arr: Tensor[H, W] = (one_hot * unhot_encode).sum(axis=-1)
+        assert class_arr.max() < 7
         arr = np.array(class_arr, dtype=np.uint8)
         np.savez_compressed(file.with_suffix(".jpg.2.npz"), data=arr)
 
 
-def draw_semantic_segmentation(one_hot: Tensor[H, W, C]):
-    unhot_encode: Tensor[H, W, C] = torch.ones_like(one_hot).cumsum(axis=-1)
-    # The following .sum is arbitrary, could also be .max, since each layer is non-overlapping
-    class_arr: Tensor[H, W] = (one_hot * unhot_encode).sum(axis=-1)
+def draw_semantic_segmentation(class_arr: Tensor[H, W, C]):
     num2label = dict(enumerate(["None"] + MASK_LABELS))
 
     img = hv.Image(class_arr.numpy())

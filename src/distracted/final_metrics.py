@@ -1,9 +1,10 @@
 import mlflow
-from distracted.experimental_setups import unpack
-from torch.utils.data import DataLoader
-from distracted.dataset_loader import DriverDataset
 import torch
+from torch.utils.data import DataLoader
+
 from distracted.classifiers import get_confusion_matrix
+from distracted.dataset_loader import DriverDataset
+from distracted.experimental_setups import unpack
 
 data_kwargs = {
     # "num_workers": 4,
