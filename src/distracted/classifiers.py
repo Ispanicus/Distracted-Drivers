@@ -167,6 +167,11 @@ def get_optimiser_params(model, top_lr, top_decay, body_lr=0, body_decay=0, **_)
     for n, p in model.named_parameters():
         params = top_params if "top" in n or "classifier" in n else body_params
         params.append(p)
+    if not top_params:
+        print("didnt find any top params! Assuming top_params = all_params")
+        top_params = body_params
+        body_params = []
+        assert not body_lr and not body_decay
 
     return [
         {"params": top_params, "lr": top_lr, "weight_decay": top_decay},
