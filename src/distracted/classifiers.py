@@ -147,7 +147,7 @@ def get_confusion_matrix(model, device, test_loader):
         df_cm = pd.DataFrame(cm, index = [i for i in ID2LABEL.values()],
                   columns = [i for i in ID2LABEL.values()])
         fig = plt.figure(figsize=(16,10))
-        sns.heatmap(df_cm, annot=True, fmt='g', ax=f.axes[0])
+        sns.heatmap(df_cm, annot=True, fmt='g')
     return fig
 
 
@@ -175,13 +175,13 @@ def main(setup: ExperimentSetup):
         "drop_last": True,  # Drop last batch if it's not full
     }
 
-    train_loader, dev_loader, test_loader = [
+    train_loader, dev_loader = [
         DataLoader(
             DriverDataset(split, **setup.dataset_kwargs),
             **data_kwargs,
             **setup.dataloader_kwargs,
         )
-        for split in ["train", "dev","test"]
+        for split in ["train", "dev"]
     ]
 
     model = setup.model.to(device)
@@ -214,8 +214,8 @@ def main(setup: ExperimentSetup):
             log_metric("val loss", test_loss)
         mlflow.pytorch.log_state_dict(state, "model")
         mlflow.pytorch.log_model(model, "model")
-        fig = get_confusion_matrix(model, device, test_loader)
-        mlflow.log_artifact(fig, "confusion_matrix.png")
+        fig = get_confusion_matrix(model, device, dev_loader)
+        mlflow.log_figure(fig, "confusion_matrix.png")
         
 
 

@@ -1,0 +1,42 @@
+{
+    "adapter_b0_3_lr_2":
+        {
+            "--adapters":"[3]",
+            "--model-name": "google/efficientnet-b0",
+            "--body-lr": 0.0,
+            "--top-lr": 2.0,
+            "--epochs": 30
+        },
+    "adapter_b0_3_lr_1":
+        {
+            "--adapters":"[3]",
+            "--model-name": "google/efficientnet-b0",
+            "--body-lr": 0.0,
+            "--top-lr": 1.0,
+            "--epochs": 30
+        },
+    "adapter_b0_3_lr_0.5":
+        {
+            "--adapters":"[3]",
+            "--model-name": "google/efficientnet-b0",
+            "--body-lr": 0.0,
+            "--top-lr": 0.5,
+            "--epochs": 30
+        },
+    "adapter_b0_3_lr_0.1":
+    {
+        "--adapters":"[3]",
+        "--model-name": "google/efficientnet-b0",
+        "--body-lr": 0.0,
+        "--top-lr": 0.1,
+        "--epochs": 30
+    },
+    "adapter_b0_3_lr_0.01":
+    {
+        "--adapters":"[3]",
+        "--model-name": "google/efficientnet-b0",
+        "--body-lr": 0.0,
+        "--top-lr": 0.01,
+        "--epochs": 30
+    }
+}
