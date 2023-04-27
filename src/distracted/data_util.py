@@ -27,6 +27,22 @@ MASK_LABELS = [
 ]
 C = len(MASK_LABELS)
 
+CLASS_LABELS = [
+    "normal driving",
+    "texting - right",
+    "talking on the phone - right",
+    "texting - left",
+    "talking on the phone - left",
+    "operating the radio",
+    "drinking",
+    "reaching behind",
+    "hair and makeup",
+    "talking to passenger",
+]
+
+ID2LABEL = dict(enumerate(CLASS_LABELS))
+LABEL2ID = {v: k for k, v in ID2LABEL.items()}
+
 
 class Tensor(torch.Tensor):
     def __class_getitem__(*args):
