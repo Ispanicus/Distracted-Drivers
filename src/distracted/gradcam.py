@@ -1,3 +1,5 @@
+import operator
+
 import matplotlib.pyplot as plt
 import mlflow
 import numpy as np
@@ -16,72 +18,51 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def pp(x):
     x = x - x.min()
     x = x / x.max()
-    return (x).clamp(0, 1)
+    return x.clamp(0, 1)
 
 
-def preprocess_images(images):
-    preprocessed_images = []
-    for image_func in images:
-        preprocessed_images.append(
-            PREPROCESSOR(image_func(), return_tensors="pt")["pixel_values"].squeeze()
-        )
-    return preprocessed_images
-
-
-def correct_predictions(model, classname="c0", subject="p026"):
+def get_predictions(
+    model, classname, subject, display_check: callable = lambda pred, true: pred == true
+):
     cam = GradCam(model, device=device)
-    df = get_train_df()
-    images = df.query("subject == @subject and classname == @classname")["img"]
-    preprocessed_images = preprocess_images(images)
+    image_funcs: list[callable] = (
+        get_train_df().query("subject == @subject and classname == @classname").img
+    )
 
     fig, axes = plt.subplots(2, 5, figsize=(15, 6))
     j = 0
-    for image in preprocessed_images:
+    for image_func in image_funcs:
         if j >= 10:
             break
+
+        image = PREPROCESSOR(image_func(), return_tensors="pt")[
+            "pixel_values"
+        ].squeeze()
         output = model(image.unsqueeze(0).to(device))
-        if output.argmax() == int(classname[-1]):
-            tensr = cam(
-                input_image=image.unsqueeze(0).to(device), layer=None, postprocessing=pp
-            )[0].squeeze(0)
-            img = Image.fromarray(
-                np.array(255 * tensr.permute(1, 2, 0)).astype(np.uint8)
-            )
-            row, col = divmod(j, 5)
-            axes[row, col].imshow(img)
-            axes[row, col].axis("off")
-            axes[row, col].set_title(f"True: {classname} \n Predicted {classname}")
-            j += 1
+
+        pred_class = output.argmax()
+        if not display_check(pred_class, int(classname[-1])):
+            continue
+
+        tensr = cam(
+            input_image=image.unsqueeze(0).to(device), layer=None, postprocessing=pp
+        )[0].squeeze(0)
+        img = Image.fromarray(np.array(255 * tensr.permute(1, 2, 0)).astype(np.uint8))
+
+        row, col = divmod(j, 5)
+        axes[row, col].imshow(img)
+        axes[row, col].axis("off")
+        axes[row, col].set_title(f"True: {classname} \n Predicted {pred_class}")
+        j += 1
     plt.show()
 
 
 def confused_predictions(model, classname="c0", subject="p026"):
-    cam = GradCam(model, device=device)
-    df = get_train_df()
-    images = df.query("subject == @subject and classname == @classname")["img"]
-    preprocessed_images = preprocess_images(images)
+    get_predictions(model, classname, subject, display_check=operator.ne)
 
-    fig, axes = plt.subplots(2, 5, figsize=(15, 6))
-    j = 0
-    for image in preprocessed_images:
-        if j >= 10:
-            break
-        output = model(image.unsqueeze(0).to(device))
-        if output.argmax() != int(classname[-1]):
-            tensr = cam(
-                input_image=image.unsqueeze(0).to(device), layer=None, postprocessing=pp
-            )[0].squeeze(0)
-            img = Image.fromarray(
-                np.array(255 * tensr.permute(1, 2, 0)).astype(np.uint8)
-            )
-            row, col = divmod(j, 5)
-            axes[row, col].imshow(img)
-            axes[row, col].axis("off")
-            axes[row, col].set_title(
-                f"True: {classname} \n Predicted: c{output.argmax()} "
-            )
-            j += 1
-    plt.show()
+
+def correct_predictions(model, classname="c0", subject="p026"):
+    get_predictions(model, classname, subject, display_check=operator.eq)
 
 
 if __name__ == "__main__":
