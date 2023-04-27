@@ -6,10 +6,10 @@ from pathlib import Path
 
 
 MAX_WORKERS = 1
-
+HYPERPARAMETERS_FILE = "hyperparameters_2.json"
 classify_path = str((Path(__file__).parent / "classifiers.py").absolute())
 venv_python_path = str((Path(__file__).parents[2]/"venv/Scripts/python").absolute())
-hyper_params_path = str((Path(__file__).parent / "hyperparameters.json").absolute())
+hyper_params_path = str((Path(__file__).parent / HYPERPARAMETERS_FILE).absolute())
 
 def task(**kwargs):
     cmd = [classify_path]
@@ -19,10 +19,25 @@ def task(**kwargs):
     result = subprocess.Popen([venv_python_path] + cmd,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE)
+    _, stderr = result.communicate()
+    if stderr:
+        print(stderr.decode('utf-8'))
     return result
 
 
 def main():
+    results = dict()
+
+    with open(hyper_params_path, "r") as f:
+        hyperparameters = json.load(f)
+
+    for run_slug, kwargs in hyperparameters.items():
+        print(f"Starting {run_slug}")
+        result = task(**kwargs)
+        results[run_slug] = {run_slug: {"results": result, "kwargs": kwargs}}
+        print(f"Finished {run_slug}")
+
+def main2():
     results = dict()
 
     with open(hyper_params_path, "r") as f:
