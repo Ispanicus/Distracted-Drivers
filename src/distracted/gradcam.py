@@ -14,7 +14,7 @@ PREPROCESSOR = EfficientNetImageProcessor.from_pretrained(
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 #default model
-model = mlflow.pytorch.load_model(model_uri='file://D:\Github\Distracted-Drivers\data\mlruns/0/aa246d9d2106472492442ff362b1b143/artifacts/model')
+#model = mlflow.pytorch.load_model(model_uri='file://D:\Github\Distracted-Drivers\data\mlruns/0/aa246d9d2106472492442ff362b1b143/artifacts/model')
 cam = GradCam(model, device=device)
 
 def pp(x):
@@ -49,7 +49,7 @@ def correct_predictions(classname = 'c0', subject = 'p026', model = model):
             j += 1
     plt.show()
 
-def confused_predictions(classname = 'c0', subject = 'p026', model = model):
+def confused_predictions(classname = 'c0', subject = 'p026', model):
 
     df = get_train_df()
     images = df.query("subject == @subject and classname == @classname")['img']

@@ -13,7 +13,7 @@ dependencies = [
     "click",
     "transformers",
     "seaborn",
-	"mirror"
+	"mirror @ git+https://github.com/FrancescoSaverioZuppichini/mirror.git"
 ]
 
 [tool.setuptools.packages.find]
