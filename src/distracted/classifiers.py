@@ -72,13 +72,11 @@ def init_cli(
 
     main(setup)
 
-
 def cross_entropy_loss(output, labels):
     try:
         return F.cross_entropy(output, labels)
     except AttributeError:
         return F.cross_entropy(output, labels)
-
 
 def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
     model.train()
@@ -105,7 +103,6 @@ def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
     
     return train_loss / len(train_loader)
 
-
 def test(model, device, test_loader, epoch):
     model.eval()
     test_loss = 0
@@ -125,8 +122,9 @@ def test(model, device, test_loader, epoch):
     # log_metric("val accuracy", correct / len(test_loader.dataset))
     return test_loss / len(test_loader)
 
-def get_confusion_matrix(model, device, test_loader):
+def get_confusion_matrix(model, test_loader):
     model.eval()
+    device = torch.device("cuda")
     with torch.no_grad():
         true_values = []
         predicted_values = []
@@ -152,8 +150,6 @@ def get_confusion_matrix(model, device, test_loader):
         fig = plt.figure(figsize=(16,10))
         sns.heatmap(df_cm, annot=True, fmt='g')
     return fig, accuracy
-
-
 
 def get_optimiser_params(model, top_lr, top_decay, body_lr=0, body_decay=0, **_):
     top_params, body_params = [], []
@@ -197,30 +193,30 @@ def main(setup: ExperimentSetup):
 
     best_test_loss = 999
     with mlflow.start_run():
-        log_params(setup.params)
+        try:
+            log_params(setup.params)
 
-        for epoch in range(1, setup.params["epochs"] + 1):
-            with timeit("train"):
-                train_loss = train(
-                    model, device, train_loader, optimizer, epoch, log_interval=10
-                )
-            with timeit("test"):
-                if (
-                    test_loss := test(model, device, dev_loader, epoch)
-                ) < best_test_loss:
-                    best_test_loss = test_loss
-                    state = model.state_dict()
+            for epoch in range(1, setup.params["epochs"] + 1):
+                with timeit("train"):
+                    train_loss = train(
+                        model, device, train_loader, optimizer, epoch, log_interval=10
+                    )
+                with timeit("test"):
+                    if (
+                        test_loss := test(model, device, dev_loader, epoch)
+                    ) < best_test_loss:
+                        best_test_loss = test_loss
+                        state = model.state_dict()
 
-            scheduler.step()
+                scheduler.step()
 
-            log_metric("train loss", train_loss)
-            log_metric("val loss", test_loss)
-        mlflow.pytorch.log_state_dict(state, "model")
-        mlflow.pytorch.log_model(model, "model")
-        fig, _ = get_confusion_matrix(model, device, dev_loader)
-        mlflow.log_figure(fig, "confusion_matrix.png")
+                log_metric("train loss", train_loss)
+                log_metric("val loss", test_loss)
+        finally:
+            mlflow.pytorch.log_state_dict(state, "model")
+            mlflow.pytorch.log_model(model, "model")
+            fig, _ = get_confusion_matrix(model, dev_loader)
+            mlflow.log_figure(fig, "confusion_matrix.png")
         
-
-
 if __name__ == "__main__":
     init_cli()

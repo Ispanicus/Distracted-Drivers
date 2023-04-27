@@ -5,3 +5,5 @@
 johan*.ipynb
 dataset.obj
 *.job
+adapter_retrainig.ipynb
+*test_install*
