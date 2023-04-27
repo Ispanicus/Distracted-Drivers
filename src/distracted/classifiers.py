@@ -147,7 +147,7 @@ def get_confusion_matrix(model, device, test_loader):
         df_cm = pd.DataFrame(cm, index = [i for i in ID2LABEL.values()],
                   columns = [i for i in ID2LABEL.values()])
         fig = plt.figure(figsize=(16,10))
-        sns.heatmap(df_cm, annot=True, fmt='g', ax=f.axes[0])
+        sns.heatmap(df_cm, annot=True, fmt='g')
     return fig
 
 
