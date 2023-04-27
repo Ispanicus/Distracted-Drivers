@@ -212,9 +212,9 @@ def main(setup: ExperimentSetup):
 
             log_metric("train loss", train_loss)
             log_metric("val loss", test_loss)
-        fig = get_confusion_matrix(model, device, test_loader)
         mlflow.pytorch.log_state_dict(state, "model")
         mlflow.pytorch.log_model(model, "model")
+        fig = get_confusion_matrix(model, device, test_loader)
         mlflow.log_artifact(fig, "confusion_matrix.png")
         
 
