@@ -102,6 +102,7 @@ def train(model, device, train_loader, optimizer, epoch, *, log_interval=10):
                     loss,
                 )
             )
+    
     return train_loss / len(train_loader)
 
 
@@ -120,7 +121,7 @@ def test(model, device, test_loader, epoch):
             # )  # get the index of the max log-probability
             # correct += pred.eq(target.view_as(pred)).sum().item()
 
-    print(f"\nTest set Epoch {epoch}: Average loss: {test_loss:.4f}\n")
+    print(f"\nTest set Epoch {epoch}: Average loss: {(test_loss / len(test_loader)):.4f}\n")
     # log_metric("val accuracy", correct / len(test_loader.dataset))
     return test_loss / len(test_loader)
 
