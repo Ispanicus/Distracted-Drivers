@@ -175,13 +175,13 @@ def main(setup: ExperimentSetup):
         "drop_last": True,  # Drop last batch if it's not full
     }
 
-    train_loader, dev_loader, test_loader = [
+    train_loader, dev_loader = [
         DataLoader(
             DriverDataset(split, **setup.dataset_kwargs),
             **data_kwargs,
             **setup.dataloader_kwargs,
         )
-        for split in ["train", "dev","test"]
+        for split in ["train", "dev"]
     ]
 
     model = setup.model.to(device)
@@ -214,7 +214,7 @@ def main(setup: ExperimentSetup):
             log_metric("val loss", test_loss)
         mlflow.pytorch.log_state_dict(state, "model")
         mlflow.pytorch.log_model(model, "model")
-        fig = get_confusion_matrix(model, device, test_loader)
+        fig = get_confusion_matrix(model, device, dev_loader)
         mlflow.log_figure(fig, "confusion_matrix.png")
         
 
