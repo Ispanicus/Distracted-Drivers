@@ -39,6 +39,7 @@ torch.backends.cuda.matmul.allow_tf32 = True
 @click.option("--body-decay", default=0.0, type=float)
 @click.option("--gamma", default=1.0, type=float)
 @click.option("--epochs", default=10)
+@click.option("--adapter-weight", default=0.0, type=float)
 def init_cli(
     batch_size=128,
     model_name="google/efficientnet-b3",
@@ -49,6 +50,7 @@ def init_cli(
     body_decay=0.0,
     gamma=1.0,
     epochs=10,
+    adapter_weight=0.0,
 ):
     adapters = eval(adapters)
 
@@ -62,7 +64,7 @@ def init_cli(
     )
 
     if adapters:
-        setup = adapter_setup(**common_params, adapters=adapters)
+        setup = adapter_setup(**common_params, adapters=adapters, adapter_weight=adapter_weight)
     elif body_lr:
         setup = finetune_setup(**common_params, body_lr=body_lr, body_decay=body_decay)
     else:

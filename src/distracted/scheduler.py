@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 
-MAX_WORKERS = 8
+MAX_WORKERS = 1
 
 classify_path = str((Path(__file__).parent / "classifiers.py").absolute())
 venv_python_path = str((Path(__file__).parents[2]/"venv/Scripts/python").absolute())

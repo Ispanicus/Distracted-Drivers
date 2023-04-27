@@ -30,7 +30,8 @@ def unpack(x):
 
 def adapter_setup(**params) -> ExperimentSetup:
     adapters = params["adapters"]
-    model = get_adapter_model(MODEL_NAME, adapter_locations=adapters)
+    adapter_weight = params["adapter_weight"]
+    model = get_adapter_model(MODEL_NAME, adapter_locations=adapters, adapter_weight=adapter_weight)
 
     num_classes = 10
     model.classifier = nn.Linear(model.config.hidden_dim, num_classes)
