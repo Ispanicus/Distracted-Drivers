@@ -15,6 +15,7 @@ from distracted.data_util import (
     Tensor,
     W,
     get_train_df,
+    load_onehot,
     save_onehot,
 )
 
@@ -87,6 +88,16 @@ def extract_onehot(prediction, model_id2label):
         draw_semantic_segmentation(one_hot)
 
     return one_hot
+
+
+def squeeze_onehots(one_hot: Tensor[H, W, C]):
+    unhot_encode: Tensor[H, W, C] = torch.ones_like(one_hot).cumsum(axis=-1)
+    for file in (DATA_PATH / "onehot").glob("*.jpg.npz"):
+        one_hot = load_onehot(file)
+        # The following .sum is arbitrary, could also be .max, since each layer is non-overlapping
+        class_arr: Tensor[H, W] = (one_hot * unhot_encode).sum(axis=-1)
+        arr = np.array(class_arr, dtype=np.uint8)
+        np.savez_compressed(file.with_suffix(".jpg.2.npz"), data=arr)
 
 
 def draw_semantic_segmentation(one_hot: Tensor[H, W, C]):
