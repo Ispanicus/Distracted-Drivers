@@ -145,9 +145,6 @@ if __name__ == "__main__":
                 transform=segment_transform,
                 fuck_your_ram=128,
             )
-        loader = DataLoader(
-            segment_train_dataset, batch_size=128, collate_fn=collate_fn
-        )
 
         with timeit("dataloader"):
             segment_train_dataloader = DataLoader(
