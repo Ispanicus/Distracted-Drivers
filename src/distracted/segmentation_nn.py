@@ -5,9 +5,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from distracted.data_util import DATA_PATH, C, H, Tensor, W, timeit
+from distracted.data_util import DATA_PATH, C, H, Tensor, W, load_model, timeit
 
-D = 2560  # Embedding dimension
+D = 1536  # Embedding dimension for efficientnet-b3
 
 
 class Net(nn.Module):
@@ -23,15 +23,21 @@ class Net(nn.Module):
             nn.Dropout(0.25),
             nn.Flatten(),
         )
+        self.seq11 = nn.Linear(D, 280)  # new seq to allow concat embedding
         self.seq2 = nn.Sequential(  # new seq to allow concat embedding
-            nn.Linear(D + 280, 10),
+            nn.Linear(2 * 280, 10),
             nn.Dropout(0.25),
             nn.LogSoftmax(dim=1),
         )
 
     def forward(self, segment, imagenet_embeddings):
         x = self.seq1(segment)
-        x = torch.cat((x, imagenet_embeddings), 1)
+        y = self.seq11(imagenet_embeddings)
+
+        x = F.normalize(x)
+        y = F.normalize(y)
+
+        x = torch.cat((x, y), 1)
         x = self.seq2(x)
         return x
 
@@ -47,9 +53,16 @@ def load_embeddings():
     return embeddings
 
 
+imagenet_model = load_model("23057eb022344d8eb097a6a8ce1522eb").to("cuda")
+imagenet_model.classifier = nn.Identity()
+
+
 def dummy_imagenet(x: Tensor["B", 3, H, W]) -> Tensor:
     one, three, w, h = x.shape
     assert one == 1 and three == 3, f"Expected (1, 3, {w}, {h}) but got {x.shape}"
+    x = imagenet_model(x.to("cuda")).squeeze().detach().cpu()
+    assert x.shape == (D,), f"Expected ({D},) but got {x.shape}"
+    return x
     return torch.ones(
         (D,),
         dtype=torch.float32,

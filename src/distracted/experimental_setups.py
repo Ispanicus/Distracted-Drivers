@@ -1,10 +1,12 @@
 import typing
+from tabnanny import check
 
 import torch.nn as nn
 from transformers import EfficientNetForImageClassification, EfficientNetImageProcessor
 
 import distracted.segmentation_nn as segmentation_nn
 from distracted.adapters import get_adapter_model
+from distracted.data_util import load_model
 
 MODEL_NAME = "google/efficientnet-b3"
 PREPROCESSOR = EfficientNetImageProcessor.from_pretrained(
@@ -80,7 +82,10 @@ def finetune_setup(**params) -> ExperimentSetup:
 
 
 def segmentation_setup(**params) -> ExperimentSetup:
-    model = segmentation_nn.Net()
+    checkpoint = ""
+    model = load_model(checkpoint) if checkpoint else segmentation_nn.Net()
+    if checkpoint:
+        params |= {"checkpoint": checkpoint}
 
     return ExperimentSetup(
         model=model,
