@@ -82,10 +82,10 @@ def finetune_setup(**params) -> ExperimentSetup:
 
 
 def segmentation_setup(**params) -> ExperimentSetup:
-    checkpoint = ""
-    model = load_model(checkpoint) if checkpoint else segmentation_nn.Net()
-    if checkpoint:
-        params |= {"checkpoint": checkpoint}
+    ch = params["checkpoint"]
+    model = load_model(ch) if ch else segmentation_nn.Net()
+    if ch:
+        params |= {"checkpoint": ch}
 
     return ExperimentSetup(
         model=model,

@@ -50,6 +50,7 @@ def init_cli(
     gamma=1.0,
     epochs=10,
     adapter_weight=0.0,
+    checkpoint="",
 ):
     adapters = eval(adapters)
 
@@ -69,7 +70,7 @@ def init_cli(
     elif body_lr:
         setup = finetune_setup(**common_params, body_lr=body_lr, body_decay=body_decay)
     else:
-        setup = segmentation_setup(**common_params)
+        setup = segmentation_setup(**common_params, checkpoint=checkpoint)
 
     main(setup)
 
