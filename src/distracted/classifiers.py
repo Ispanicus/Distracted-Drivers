@@ -151,13 +151,13 @@ def get_confusion_matrix(model, test_loader):
                 num_identical += 1
         accuracy = num_identical / len(true_values)
 
-        cm = confusion_matrix(true_values, predicted_values)
+        cm = confusion_matrix(true_values, predicted_values, normalize="true")
         df_cm = pd.DataFrame(
             cm,
             index=[i for i in ID2LABEL.values()],
             columns=[i for i in ID2LABEL.values()],
         )
-        fig = plt.figure(figsize=(16, 10))
+        fig = plt.figure(figsize=(16, 12))
         sns.heatmap(df_cm, annot=True, fmt="g")
     return fig, accuracy
 
