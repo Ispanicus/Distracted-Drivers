@@ -66,6 +66,6 @@ def correct_predictions(model, classname="c0", subject="p026"):
 
 
 if __name__ == "__main__":
-    model = load_model("aa246d9d2106472492442ff362b1b143")
+    model = load_model("d80d9fd0c2d849c1bee77bbe87c95566")
     confused_predictions(model)
     correct_predictions(model)
