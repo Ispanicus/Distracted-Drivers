@@ -1,15 +1,15 @@
-from concurrent.futures import ThreadPoolExecutor
 import concurrent.futures
 import json
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-
 
 MAX_WORKERS = 1
 HYPERPARAMETERS_FILE = "hyperparameters_2.json"
 classify_path = str((Path(__file__).parent / "classifiers.py").absolute())
-venv_python_path = str((Path(__file__).parents[2]/"venv/Scripts/python").absolute())
+venv_python_path = str((Path(__file__).parents[2] / "venv/Scripts/python").absolute())
 hyper_params_path = str((Path(__file__).parent / HYPERPARAMETERS_FILE).absolute())
+
 
 def task(**kwargs):
     cmd = [classify_path]
@@ -22,7 +22,7 @@ def task(**kwargs):
     stdout, stderr = result.communicate()
     print(stdout)
     if stderr:
-        print(stderr.decode('utf-8'))
+        print(stderr.decode("utf-8"))
     return result
 
 
@@ -37,6 +37,7 @@ def main():
         result = task(**kwargs)
         results[run_slug] = {run_slug: {"results": result, "kwargs": kwargs}}
         print(f"Finished {run_slug}")
+
 
 def main2():
     results = dict()
@@ -66,7 +67,7 @@ def main2():
                     errors.append(stderr.decode("utf-8"))
                     print(stderr.decode("utf-8"))
     print("Finished ThreadPoolExecutor")
-    if errors: 
+    if errors:
         print("Errors detected!")
         for error in errors:
             print(error)

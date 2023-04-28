@@ -1,30 +1,12 @@
-import time
-from distracted.data_util import (
-    DATA_PATH,
-    get_train_df,
-    H,
-    W,
-    C,
-    timeit,
-    load_onehot,
-)
-import multiprocessing
-import torchvision.io
-from torch.utils.data import Dataset, DataLoader
-import pandas as pd
-from datasets import load_dataset
 from typing import Literal
-import pickle
-from transformers import EfficientNetImageProcessor
+
+import pandas as pd
+import torchvision.io
+from torch.utils.data import DataLoader, Dataset
+
+from distracted.data_util import DATA_PATH, C, H, W, get_train_df, load_onehot, timeit
 from distracted.experimental_setups import PREPROCESSOR
 
-# __df = get_train_df()
-# __dev_subjects = (
-#     __df.groupby("subject").path.count().sample(frac=0.15)
-# )  # NOTE: The frac is not exact, as subjects have 346-1237 imgs each (most often ~800 though)
-# __test_subjects = (
-#     __df.groupby("subject").path.count().sample(frac=0.15)
-# )
 # Sizes: dev: 3741, test: 3526, train: 15157
 subjects = {
     "dev": ["p051", "p050", "p047", "p026"],
@@ -52,25 +34,6 @@ subjects = {
 }
 
 
-def dataset_loader():
-    OBJ_PATH = DATA_PATH / "dataset_v2.obj"
-    if OBJ_PATH.exists():
-        with open(OBJ_PATH, "rb") as file:
-            dataset = pickle.load(file)
-            return dataset
-
-    create_metadata()
-
-    dataset = load_dataset(
-        "imagefolder", data_dir=DATA_PATH / "imgs", drop_labels=False
-    )
-
-    with open(OBJ_PATH, "wb") as file:
-        pickle.dump(dataset, file)
-
-    return dataset
-
-
 class DriverDataset(Dataset):
     def __init__(
         self,
@@ -86,12 +49,7 @@ class DriverDataset(Dataset):
             get_train_df().query(f"subject in @subjects[@split]").drop(columns="img")
         )
 
-        # Load everything into memory :)
-        i_know_what_im_about_to_do = str(fuck_your_ram)[-2:] == "42"
-        if fuck_your_ram and not i_know_what_im_about_to_do:
-            # memory *= n_processes
-            self.naughty_boi = lambda: ...  # Crashes if multiprocessing
-        self.fuck_your_ram = fuck_your_ram
+        self.fuck_your_ram = fuck_your_ram  # Load this many samples into memory
 
     def __len__(self):
         return len(self.df)
@@ -112,9 +70,7 @@ class DriverDataset(Dataset):
             return torchvision.io.read_image(str(row.path.absolute()))
 
         def load_segment(row):
-            return load_onehot(
-                next((DATA_PATH / "onehot").glob(f"{row.path.name}.npz"))
-                )
+            return load_onehot(next(DATA_PATH.glob(f"onehot/{row.path.name}.npz")))
 
         def preprocess_img(row):
             return PREPROCESSOR(load_img(row), return_tensors="pt")
@@ -155,7 +111,7 @@ def segment_example():
         returns=["img_name", "torch_image", "preprocessed_image", "segment", "label"],
     )
     segment_train_dataloader = DataLoader(
-        segment_train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2
+        segment_train_dataset, batch_size=BATCH_SIZE, shuffle=True
     )
     for (
         img_names,
@@ -167,45 +123,31 @@ def segment_example():
         assert len(img_names) == BATCH_SIZE
         assert torch_images.shape == (BATCH_SIZE, 3, H, W)
         assert "pixel_values" in preprocessed
-        assert segments.shape == (BATCH_SIZE, H, W, C)
+        assert segments.shape == (BATCH_SIZE, H, W)
         assert labels.shape == (BATCH_SIZE,)
-        break
-
-
-def img_example():
-    img_dataloader = dataset_loader()
-
-    for data in img_dataloader["train"]:
-        match data:
-            case {
-                "image": image,
-                "label": label,
-                "subject": subject,
-                "classname": classname,
-                "img": img_name,
-            }:
-                print(f"{image.size=} {label=} {subject=} {classname=} {img_name=}")
-
-            case _:
-                raise ValueError("Data did not follow expected format")
         break
 
 
 if __name__ == "__main__":
     # segment_example()
-    # img_example()
 
     from tqdm import tqdm
-    from distracted.experimental_setups import preprocess_img
+
+    from distracted.experimental_setups import PREPROCESSOR
+    from distracted.segmentation_nn import collate_fn, segment_transform
 
     BATCH_SIZE = 128
     with timeit("total"):
         with timeit("dataset"):
             segment_train_dataset = DriverDataset(
-                "train",
-                returns=["preprocessed_image", "label"],
-                fuck_your_ram=1_000_042,
+                split="train",
+                returns=["segment", "preprocessed_image", "label"],
+                transform=segment_transform,
+                fuck_your_ram=1_000_000,
             )
+
+        with timeit("cache"):
+            segment_train_dataset[0]
 
         with timeit("dataloader"):
             segment_train_dataloader = DataLoader(
@@ -213,18 +155,20 @@ if __name__ == "__main__":
                 batch_size=BATCH_SIZE,
                 shuffle=True,
                 drop_last=True,
+                collate_fn=collate_fn,
             )
 
         with timeit("iter dataloader"):
             iterator = iter(segment_train_dataloader)
 
-        with timeit("loop"):
-            for torch_images, labels in tqdm(iterator):
+        with timeit("full_loop"):
+            for *data, labels in tqdm(iterator):
                 pass
 
         with timeit("iter dataloader"):
             iterator = iter(segment_train_dataloader)
 
-        with timeit("loop w. cuda"):
-            for torch_images, labels in tqdm(iterator):
-                torch_images.to("cuda")
+        with timeit("full_loop w. cuda"):
+            for *data, labels in tqdm(iterator):
+                for d in data:
+                    d.to("cuda")

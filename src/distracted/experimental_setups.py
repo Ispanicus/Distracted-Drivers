@@ -1,8 +1,10 @@
 import typing
+
 import torch.nn as nn
-from distracted.adapters import get_adapter_model
-import distracted.segmentation_nn as segmentation_nn
 from transformers import EfficientNetForImageClassification, EfficientNetImageProcessor
+
+import distracted.segmentation_nn as segmentation_nn
+from distracted.adapters import get_adapter_model
 
 MODEL_NAME = "google/efficientnet-b3"
 PREPROCESSOR = EfficientNetImageProcessor.from_pretrained(
@@ -31,7 +33,9 @@ def unpack(x):
 def adapter_setup(**params) -> ExperimentSetup:
     adapters = params["adapters"]
     adapter_weight = params["adapter_weight"]
-    model = get_adapter_model(MODEL_NAME, adapter_locations=adapters, adapter_weight=adapter_weight)
+    model = get_adapter_model(
+        MODEL_NAME, adapter_locations=adapters, adapter_weight=adapter_weight
+    )
 
     num_classes = 10
     model.classifier = nn.Linear(model.config.hidden_dim, num_classes)
@@ -84,7 +88,7 @@ def segmentation_setup(**params) -> ExperimentSetup:
         dataset_kwargs={
             "returns": ["segment", "preprocessed_image", "label"],
             "transform": segmentation_nn.segment_transform,
-            "fuck_your_ram": 2500,
+            "fuck_your_ram": 1_000_000,
         },
         dataloader_kwargs={"collate_fn": segmentation_nn.collate_fn},
         params=params,

@@ -1,10 +1,11 @@
 import functools
-import time
+
 import pandas as pd
 import torch
 import torch.nn as nn
-from torchvision import transforms
-from distracted.data_util import DATA_PATH, H, W, C, Tensor, timeit
+import torch.nn.functional as F
+
+from distracted.data_util import DATA_PATH, C, H, Tensor, W, timeit
 
 D = 2560  # Embedding dimension
 
@@ -21,11 +22,10 @@ class Net(nn.Module):
             nn.MaxPool2d(8),
             nn.Dropout(0.25),
             nn.Flatten(),
-            nn.Linear(280, 128),
-            nn.ReLU(),
         )
         self.seq2 = nn.Sequential(  # new seq to allow concat embedding
-            nn.Linear(D + 128, 10),
+            nn.Linear(D + 280, 10),
+            nn.Dropout(0.25),
             nn.LogSoftmax(dim=1),
         )
 
@@ -47,29 +47,28 @@ def load_embeddings():
     return embeddings
 
 
-def dummy_imagenet(x: Tensor[1, 3, H, W]) -> Tensor:
+def dummy_imagenet(x: Tensor["B", 3, H, W]) -> Tensor:
     one, three, w, h = x.shape
     assert one == 1 and three == 3, f"Expected (1, 3, {w}, {h}) but got {x.shape}"
-    return torch.ones((D,), dtype=torch.float32)
+    return torch.ones(
+        (D,),
+        dtype=torch.float32,
+    )
 
 
 def collate_fn(
     x: list[tuple[Tensor[H, W, C], Tensor[3, H, W], int]]
 ) -> tuple[Tensor["B", H, W, C], Tensor["B", 3, H, W], list[int]]:
     """Turn list[Tensor[x,y,z]] -> Tensor[Batch,x,y,z]"""
-    segment, preprocessed_img, label = zip(*x)
-    segment = torch.stack(segment)
-    preprocessed_img = torch.stack(preprocessed_img)
-    return segment, preprocessed_img, torch.tensor(label)
+    segment, embeddings, label = zip(*x)
+    # Turn class_arr (0, 1, 2, etc.) into one_hot
+    class_arr = torch.stack(segment).to(torch.int64)
+    one_hot = F.one_hot(class_arr, num_classes=C).to(torch.float32).permute(0, 3, 1, 2)
+    return one_hot, torch.stack(embeddings), torch.tensor(label)
 
 
-def segment_transform(
-    x: tuple[Tensor["B", H, W, C], Tensor["B", 3, H, W], list[int]]
-) -> Tensor:
+def segment_transform(x: tuple[Tensor[H, W, C], Tensor[3, H, W], list[int]]) -> Tensor:
     segment, preprocessed_img, label = x
-    transform = transforms.Compose([permute, transforms.Normalize((0,), (1,))])
-    segment = transform(segment)
-    # assert len(preprocessed_img["pixel_values"]) == 1
     imagenet_embeddings = dummy_imagenet(preprocessed_img["pixel_values"])
     return segment, imagenet_embeddings, label
 

@@ -1,17 +1,27 @@
+from pathlib import Path
+
 from transformers.models.efficientnet.modeling_efficientnet import (
     EfficientNetForImageClassification,
 )
 
+import distracted
+
 EfficientNetForImageClassification.__call__ = lambda self, x: self.forward(x).logits
+pre_commit = Path(distracted.__path__[0]).parents[1] / ".git/hooks/pre-commit"
+if not pre_commit.exists():
+    raise IOError(
+        "Please run `pip install pre-commit && pre-commit install` to enable pre-commit hooks"
+    )
 
 if __name__ == "__main__":
-    from distracted.experimental_setups import PREPROCESSOR
-    from distracted.data_util import get_train_df, DATA_PATH
-    from distracted.gradcam import correct_predictions, confused_predictions
     import mlflow
     import numpy as np
-    from PIL import Image
     import torch
+    from PIL import Image
+
+    from distracted.data_util import DATA_PATH, get_train_df
+    from distracted.experimental_setups import PREPROCESSOR
+    from distracted.gradcam import confused_predictions, correct_predictions
 
     df = get_train_df()
     for idx, row in df.iterrows():

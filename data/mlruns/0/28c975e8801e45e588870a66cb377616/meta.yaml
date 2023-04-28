@@ -1,0 +1,15 @@
+artifact_uri: file://C:\Users\Christoffer\Documents\git\Distracted-Drivers\data\mlruns/0/28c975e8801e45e588870a66cb377616/artifacts
+end_time: 1682624856486
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 28c975e8801e45e588870a66cb377616
+run_name: awesome-shrew-664
+run_uuid: 28c975e8801e45e588870a66cb377616
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1682623025994
+status: 4
+tags: []
+user_id: Christoffer

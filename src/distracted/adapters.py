@@ -1,11 +1,12 @@
-from typing import Optional, Tuple
-from dataclasses import dataclass
-from transformers import EfficientNetForImageClassification
 import math
-from torch import nn
+from dataclasses import dataclass
+from typing import Optional, Tuple
+
 import torch
-from transformers.utils.generic import ModelOutput
+from torch import nn
+from transformers import EfficientNetForImageClassification
 from transformers.models.efficientnet.modeling_efficientnet import EfficientNetEncoder
+from transformers.utils.generic import ModelOutput
 
 
 # Following two functions taken from modeling_efficientnet.py
@@ -36,16 +37,18 @@ class BaseModelOutputWithNoAttention(ModelOutput):
 
 
 class EfficientNetAdapterEncoding(EfficientNetEncoder):
-    def __init__(self, config, model, adapter_base_block_idx,adapter_weight=0):
+    def __init__(self, config, model, adapter_base_block_idx, adapter_weight=0):
         encoder_instance = model.efficientnet.encoder
         self.config = model.config
         super().__init__(self.config)
-        self.adapter_weight = adapter_weight # weight of adapter when parallezing 0 means serial
+        self.adapter_weight = (
+            adapter_weight  # weight of adapter when parallezing 0 means serial
+        )
         self.blocks = encoder_instance.blocks
         self.top_conv = encoder_instance.top_conv
         self.top_bn = encoder_instance.top_bn
         self.top_activation = encoder_instance.top_activation
-        self.adapter_idxs = [] # idx of block before adapter
+        self.adapter_idxs = []  # idx of block before adapter
         self.adapter_base_block_idx = (
             adapter_base_block_idx  # base block idx before adapter
         )
@@ -67,7 +70,7 @@ class EfficientNetAdapterEncoding(EfficientNetEncoder):
                 block_dimensions.append((block_in_dim, block_out_dim))
                 block_idx += 1
             if i in self.adapter_base_block_idx:
-                self.adapter_idxs.append(block_idx-1)
+                self.adapter_idxs.append(block_idx - 1)
 
         for idx, base_idx in zip(self.adapter_idxs, self.adapter_base_block_idx):
             adapter_dimension = block_dimensions[idx]
@@ -98,9 +101,11 @@ class EfficientNetAdapterEncoding(EfficientNetEncoder):
                 all_hidden_states += (hidden_states,)
             if idx in self.adapter_idxs:
                 adapter = next(adapters)
-                adapter_hidden_states = adapter(hidden_states)   
+                adapter_hidden_states = adapter(hidden_states)
                 if self.adapter_weight:
-                    hidden_states = (self.adapter_weight * adapter_hidden_states + hidden_states)/2
+                    hidden_states = (
+                        self.adapter_weight * adapter_hidden_states + hidden_states
+                    ) / 2
                 else:
                     hidden_states = adapter_hidden_states
                 if output_hidden_states:

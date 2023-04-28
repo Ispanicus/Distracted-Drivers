@@ -1,0 +1,15 @@
+artifact_uri: file://D:\Github\Distracted-Drivers\data\mlruns/0/23057eb022344d8eb097a6a8ce1522eb/artifacts
+end_time: 1682094573961
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 23057eb022344d8eb097a6a8ce1522eb
+run_name: upset-crow-684
+run_uuid: 23057eb022344d8eb097a6a8ce1522eb
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1682084273254
+status: 3
+tags: []
+user_id: Alan
