@@ -75,7 +75,7 @@ class EfficientNetAdapterEncoding(EfficientNetEncoder):
                 config=config,
                 in_dim=adapter_dimension[0],
                 out_dim=adapter_dimension[1],
-                stride=config.strides[base_idx],
+                stride=1,
                 kernel_size=config.kernel_sizes[base_idx],
                 expand_ratio=1,  # No expansion
                 drop_rate=config.drop_connect_rate * idx / len(self.blocks),

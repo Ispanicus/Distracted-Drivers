@@ -19,7 +19,8 @@ def task(**kwargs):
     result = subprocess.Popen([venv_python_path] + cmd,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE)
-    _, stderr = result.communicate()
+    stdout, stderr = result.communicate()
+    print(stdout)
     if stderr:
         print(stderr.decode('utf-8'))
     return result

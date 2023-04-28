@@ -1,0 +1,13 @@
+{
+    "adapter_parallel_best":
+        {
+            "--adapters":"[3]",
+            "--model-name": "google/efficientnet-b3",
+            "--body-lr": 0.0,
+            "--top-lr": 0.5,
+            "--epochs": 30,
+            "--gamma":0.97,
+            "--adapter-weight": 0.5,
+            "--batch-size": 32
+        }
+}
