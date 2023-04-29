@@ -160,7 +160,7 @@ def get_confusion_matrix(model, test_loader):
         )
         plt.tight_layout()
         fig = plt.figure(figsize=(16, 12))
-        sns.heatmap(df_cm, annot=True, fmt="g")
+        sns.heatmap(df_cm, annot=True, fmt=".2f")
     return fig, accuracy
 
 
