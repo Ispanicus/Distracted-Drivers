@@ -158,6 +158,7 @@ def get_confusion_matrix(model, test_loader):
             index=[i for i in ID2LABEL.values()],
             columns=[i for i in ID2LABEL.values()],
         )
+        plt.tight_layout()
         fig = plt.figure(figsize=(16, 12))
         sns.heatmap(df_cm, annot=True, fmt="g")
     return fig, accuracy
