@@ -39,6 +39,7 @@ torch.backends.cuda.matmul.allow_tf32 = True
 @click.option("--gamma", default=1.0, type=float)
 @click.option("--epochs", default=10)
 @click.option("--adapter-weight", default=0.0, type=float)
+@click.option("--checkpoint", default="", type=str)
 def init_cli(
     batch_size=128,
     model_name="google/efficientnet-b3",
