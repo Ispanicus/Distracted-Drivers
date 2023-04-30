@@ -1,0 +1,15 @@
+artifact_uri: file://C:\Users\Johan\Dropbox\Uni\ITU\Year_4\AdvancedMachineLearning\Distracted-Drivers\data\mlruns/0/a049718d20184dc58e7aac99985a0afb/artifacts
+end_time: 1682726684713
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: a049718d20184dc58e7aac99985a0afb
+run_name: unequaled-ape-444
+run_uuid: a049718d20184dc58e7aac99985a0afb
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1682724081252
+status: 3
+tags: []
+user_id: Johan
