@@ -8,7 +8,7 @@ from mirror.visualisations.core import GradCam
 from PIL import Image
 from transformers import EfficientNetImageProcessor
 
-from distracted.data_util import get_train_df, load_model
+from distracted.data_util import ID2LABEL, get_train_df, load_model
 
 MODEL_NAME = "google/efficientnet-b3"
 PREPROCESSOR = EfficientNetImageProcessor.from_pretrained(MODEL_NAME)
@@ -29,7 +29,7 @@ def get_predictions(
         get_train_df().query("subject == @subject and classname == @classname").img
     )
 
-    fig, axes = plt.subplots(2, 5, figsize=(15, 6))
+    fig, axes = plt.subplots(2, 5, figsize=(18, 6))
     j = 0
     for image_func in image_funcs:
         if j >= 10:
@@ -52,7 +52,9 @@ def get_predictions(
         row, col = divmod(j, 5)
         axes[row, col].imshow(img)
         axes[row, col].axis("off")
-        axes[row, col].set_title(f"True: {classname} \n Predicted {pred_class}")
+        axes[row, col].set_title(
+            f"True: {ID2LABEL[int(classname[-1])]} \n Predicted: {ID2LABEL[int(pred_class)]}"
+        )
         j += 1
     plt.show()
 
@@ -66,6 +68,6 @@ def correct_predictions(model, classname="c0", subject="p026"):
 
 
 if __name__ == "__main__":
-    model = load_model("d80d9fd0c2d849c1bee77bbe87c95566")
+    model = load_model("27d2f141a6b8468a821d78a4eebf9f84")
     confused_predictions(model)
     correct_predictions(model)
