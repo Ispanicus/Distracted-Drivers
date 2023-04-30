@@ -14,13 +14,14 @@ from sklearn.metrics import confusion_matrix
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import DataLoader
 
-from distracted.data_util import DATA_PATH, ID2LABEL, timeit
+from distracted.data_util import DATA_PATH, ID2LABEL, load_model, timeit
 from distracted.dataset_loader import DriverDataset
 from distracted.experimental_setups import (
     ExperimentSetup,
     adapter_setup,
     finetune_setup,
     segmentation_setup,
+    unpack,
 )
 
 torch.manual_seed(42)
@@ -238,3 +239,29 @@ def main(setup: ExperimentSetup):
 
 if __name__ == "__main__":
     init_cli()
+    # import distracted.segmentation_nn as segmentation_nn
+
+    # test_loader = DataLoader(
+    #     DriverDataset(
+    #         "test",
+    #         returns=["segment", "preprocessed_image", "label"],
+    #         transform=segmentation_nn.segment_transform,
+    #     ),
+    #     batch_size=32,
+    #     drop_last=True,
+    #     collate_fn=segmentation_nn.collate_fn,
+    # )
+
+    # model_ids_and_names = [
+    #     # ("27d2f141a6b8468a821d78a4eebf9f84", "trained top layer only"),
+    #     # ("a049718d20184dc58e7aac99985a0afb", "Parallelized adapters"),
+    #     ("28c975e8801e45e588870a66cb377616", "Only segmentation"),
+    #     # ("bbf79088754b430fa9c8515fd7020eae", "Segmentation & Imagenet checkpoint"),
+    # ]
+    # for model_id, name in model_ids_and_names:
+    #     model = load_model(model_id)
+    #     fig, accuracy = get_confusion_matrix(model, test_loader)
+    #     fig.axes[0].set_title(name)
+    #     display(fig)
+
+    # test(model, "cuda", test_loader, 1)
