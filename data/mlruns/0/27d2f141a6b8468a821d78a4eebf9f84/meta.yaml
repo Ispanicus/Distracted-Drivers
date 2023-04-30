@@ -1,0 +1,15 @@
+artifact_uri: file://D:\Github\Distracted-Drivers\data\mlruns/0/27d2f141a6b8468a821d78a4eebf9f84/artifacts
+end_time: 1682799703485
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 27d2f141a6b8468a821d78a4eebf9f84
+run_name: redolent-hound-116
+run_uuid: 27d2f141a6b8468a821d78a4eebf9f84
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1682793939405
+status: 3
+tags: []
+user_id: Alan
