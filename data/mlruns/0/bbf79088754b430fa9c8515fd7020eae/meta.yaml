@@ -1,0 +1,15 @@
+artifact_uri: file://C:\Users\Christoffer\Documents\git\Distracted-Drivers\data\mlruns/0/bbf79088754b430fa9c8515fd7020eae/artifacts
+end_time: 1682772116914
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: bbf79088754b430fa9c8515fd7020eae
+run_name: painted-bee-379
+run_uuid: bbf79088754b430fa9c8515fd7020eae
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1682765925916
+status: 3
+tags: []
+user_id: Christoffer

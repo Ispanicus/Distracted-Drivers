@@ -39,6 +39,7 @@ torch.backends.cuda.matmul.allow_tf32 = True
 @click.option("--gamma", default=1.0, type=float)
 @click.option("--epochs", default=10)
 @click.option("--adapter-weight", default=0.0, type=float)
+@click.option("--checkpoint", default="", type=str)
 def init_cli(
     batch_size=128,
     model_name="google/efficientnet-b3",
@@ -158,8 +159,9 @@ def get_confusion_matrix(model, test_loader):
             index=[i for i in ID2LABEL.values()],
             columns=[i for i in ID2LABEL.values()],
         )
+        plt.tight_layout()
         fig = plt.figure(figsize=(16, 12))
-        sns.heatmap(df_cm, annot=True, fmt="g")
+        sns.heatmap(df_cm, annot=True, fmt=".2f")
     return fig, accuracy
 
 

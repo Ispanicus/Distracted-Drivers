@@ -50,19 +50,14 @@ class DriverDataset(Dataset):
         )
 
         self.fuck_your_ram = fuck_your_ram  # Load this many samples into memory
+        self._gigacache = {}
 
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, idx):
-        if getattr(self, "_gigacache", None) is None:
-            self._gigacache = []  # avoid infinite loop
-            self._gigacache = [
-                self[i] for i in range(min(len(self), self.fuck_your_ram))
-            ]  # self[i] is important: __iter__ == __bad__
-
-        if idx < len(self._gigacache):
-            return self._gigacache[idx]
+        if (cached := self._gigacache.get(idx)) is not None:
+            return cached
 
         row = self.df.iloc[idx]
 
@@ -87,6 +82,8 @@ class DriverDataset(Dataset):
         output = [returns[key](row) for key in self.returns]
         if self.transform:
             output = self.transform(output)
+        if idx < len(self._gigacache):
+            self._gigacache[idx] = output
         return output
 
 
