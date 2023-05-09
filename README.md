@@ -10,6 +10,12 @@ L-2:
 
 New L-2
   (classifier): Linear(in_features=2560 + len(feature_engineering), out_features=1000, bias=True)
+  
+Second goal is using adapter fine tuning.
+
+Specifically, insert efficientnetblocks between layers in serial or parallel.
+
+Code for adapter fine tuning is in `adapters.py`
 
 # Requirements
 CUDA & Pytorch
