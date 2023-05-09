@@ -126,6 +126,7 @@ def draw_semantic_segmentation(class_arr: Tensor[H, W, C]):
             colorbar=True,
             color_levels=C + 1,
             colorbar_opts={"major_label_overrides": num2label},
+            # ticker=FixedTicker(ticks=[0, 1]),
         )
     )
 
