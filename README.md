@@ -15,6 +15,8 @@ Second goal is using adapter fine tuning.
 
 Specifically, insert efficientnetblocks between layers in serial or parallel.
 
+# Code
+
 All relevant code in is in `src/distracted` folder
 
 Code for adapter fine tuning is in `adapters.py`
