@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 MAX_WORKERS = 1
-HYPERPARAMETERS_FILE = "hyperparameters_2.json"
+HYPERPARAMETERS_FILE = "hyperparameters_3.json"
 classify_path = str((Path(__file__).parent / "classifiers.py").absolute())
 venv_python_path = str((Path(__file__).parents[2] / "venv/Scripts/python").absolute())
 hyper_params_path = str((Path(__file__).parent / HYPERPARAMETERS_FILE).absolute())
