@@ -23,7 +23,7 @@ The feature engineering we apply is 6 classes from a semantic segmentation (Tech
     car
     chair
 ```
-See an [image example](cellphone-example.png)
+See an [image example](cellphone-example.png). These are passed through a simple CNN and flattened to create the feature_engineering vector
 
 ## [Adapters](.\src\distracted\adapters.py)
 By placing a layer adjacent to a low-level layer, we can fine-tune low-level features to our task, while only having to store the much smaller adapter layer.
