@@ -15,7 +15,13 @@ Second goal is using adapter fine tuning.
 
 Specifically, insert efficientnetblocks between layers in serial or parallel.
 
+All relevant code in is in `src/distracted` folder
+
 Code for adapter fine tuning is in `adapters.py`
+
+Code to run any model is `classifiers.py` 
+
+Code for gradcam results is in `gradcam.py`
 
 # Requirements
 CUDA & Pytorch
